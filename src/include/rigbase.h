@@ -1,0 +1,898 @@
+// ----------------------------------------------------------------------------
+// Copyright (C) 2014
+//              David Freese, W1HKJ
+//
+// This file is part of flrig.
+//
+// flrig is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 3 of the License, or
+// (at your option) any later version.
+//
+// flrig is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// ----------------------------------------------------------------------------
+
+#ifndef _RIG_BASE_H
+#define _RIG_BASE_H
+
+#include "config.h"
+#include "compat.h" // Must precede all FL includes
+
+#include <string>
+#include <cmath>
+#include <cstdlib>
+#include <vector>
+#include <iostream>
+
+#include <FL/Fl.H>
+#include "util.h"
+#include "debug.h"
+#include "rig_io.h"
+#include "status.h"
+
+#include "rigpanel.h"
+
+#define VECTOR(a,b) { a.clear(); for (size_t n = 0; n < sizeof(b)/sizeof(*b); n++) {a.push_back(b[n]);} }
+
+enum {onNIL, onA, onB};
+enum {UI, XML, SRVR, RIG};
+enum {DT_BINARY, DT_STRING};
+enum {SERIAL, TCPIP, TCI};
+
+extern const char *szNORIG;
+
+extern std::vector<std::string>vNOMODES;
+extern std::vector<std::string>vNOBWS;
+extern std::vector<std::string>vDSPLO;
+extern std::vector<std::string>vDSPHI;
+
+extern std::vector<std::string>vAGC_LABELS;
+extern std::vector<std::string>vATT_LABELS;
+extern std::vector<std::string>vPRE_LABELS;
+extern std::vector<std::string>vNB_LABELS;
+extern std::vector<std::string>vNR_LABELS;
+extern std::vector<std::string>vBK_LABELS;
+extern std::vector<std::string>v60M_LABELS;
+extern std::vector<std::string>vAN_LABELS;
+
+extern const char *szdsptooltip;
+extern const char *szbtnlabel;
+
+struct meterpair {float mtr; float val;};
+
+struct XCVR_STATE {
+	unsigned long long freq;
+	int  imode;
+	int  iBW;
+	int  bw_val;
+	int  FilterInner;
+	int  FilterOuter;
+	int  filter;
+	int  src;
+
+	int		split;
+	double	power_control;
+	int		volume_control;
+	int		attenuator;
+	int		preamp;
+	int		if_shift;
+	int		shift_val;
+	int		auto_notch;
+	int		notch;
+	int		notch_val;
+	int		noise;
+	int		nb_level;
+	int		nr;
+	int		nr_val;
+	int		mic_gain;
+	int		rf_gain;
+	int		agc_level;
+	int		squelch;
+	int		compression;
+	int		compON;
+
+	XCVR_STATE() {
+		freq = 0;
+		imode = 0;
+		iBW = 0;
+		FilterInner = 0;
+		FilterOuter = 0;
+		filter = 0;
+		src = UI;
+
+		split = 0;
+		power_control = 0;
+		volume_control = 0;
+		attenuator = 0;
+		preamp = 0;
+		if_shift = 0;
+		shift_val = 0;
+		auto_notch = 0;
+		notch = 0;
+		notch_val = 0;
+		noise = 0;
+		nb_level = 0;
+		nr = 0;
+		nr_val = 0;
+		mic_gain = 0;
+		rf_gain = 0;
+		agc_level = 0;
+		squelch = 0;
+		compression = 0;
+		compON = 0;
+		bw_val = 0;
+	}
+	XCVR_STATE(unsigned long long a, int b, int c, int d) {
+		XCVR_STATE();
+		freq = a;
+		imode = b;
+		iBW = c;
+		src = d;
+	}
+//	bool equals(XCVR_STATE alt) {
+//		if (freq != alt.freq) return false;
+//		if (iBW != alt.iBW) return false;
+//		if (imode != alt.imode) return false;
+//		return true;
+//	}
+};
+
+enum {
+	vA,    // apply to vfoA
+	vB,    // apply to vfoB
+	vX,    // apply to current vfo
+	sA,    // select vfoA
+	sB,    // select vfoB
+	ON,    // ptt ON
+	OFF,   // ptt OFF
+	sON,   // split ON
+	sOFF,  // split OFF
+	A2B,   // active to inactive vfo
+	SWAP,  // swap vfo's
+	FA2FB, // frequency vfoA -> vfoB
+	FB2FA  // frequency vfoA -> vfoB
+};
+
+struct VFOQUEUE {
+	int change; // A B AA BB ON OFF
+	XCVR_STATE vfo;
+	VFOQUEUE() {}
+	VFOQUEUE(int c, XCVR_STATE v) { change = c; vfo = v; }
+};
+
+struct GUI {
+	Fl_Widget*	W;
+	int			x;
+	int			y;
+	int			w;
+	std::string		label;
+	std::string		hint;
+};
+
+class rigbase {
+#define WVALS_LIMIT -1
+public:
+	std::string name_;
+	static std::vector<std::string>& modes_;// = vNOMODES;
+	static std::vector<std::string>& bandwidths_;// = vNOBWS;
+	static std::vector<std::string>& dsp_SL;// = vDSPLO;
+
+	const char *  SL_tooltip;
+	const char *  SL_label;
+	static std::vector<std::string>& dsp_SH;// = vDSPHI;
+	const char *  SH_tooltip;
+	const char *  SH_label;
+	const int  * bw_vals_;
+
+// other labeled control values
+	static std::vector<std::string>& agc_labels_;
+	static std::vector<std::string>& att_labels_;
+	static std::vector<std::string>& pre_labels_;
+	static std::vector<std::string>& nb_labels_;
+	static std::vector<std::string>& nr_labels_;
+	static std::vector<std::string>& bk_labels_;
+	static std::vector<std::string>& m60_labels_;
+	static std::vector<std::string>& an_labels_;
+
+	GUI *widgets;
+
+	int  io_class;
+	int  serial_baudrate;
+	int  stopbits;
+	bool serial_echo;
+	bool serial_rtscts;
+	bool serial_rtsplus;
+	bool serial_dtrplus;
+	bool serial_catptt;
+	bool serial_rtsptt;
+	bool serial_dtrptt;
+	int  serial_retries;
+
+	int  serial_write_delay;
+	int  serial_post_write_delay;
+	int  serial_timeout;
+	int  serloop_timing;
+
+	int  CIV;
+	int  defaultCIV;
+	bool USBaudio;
+
+	XCVR_STATE A;
+	XCVR_STATE B;
+	int  inuse;
+
+	int  modeA;
+	int  bwA;
+	int  bwA_val;
+	unsigned long long freqA;
+	int  modeB;
+	int  bwB;
+	int  bwB_val;
+	unsigned long long freqB;
+	int  precision;
+	int  ndigits;
+	bool can_change_alt_vfo;
+	int  active_mode;		// wbx
+
+	int  def_mode;
+	int  def_bw;
+	unsigned long long def_freq;
+	int  max_power;
+	int  last_bw;
+	int  bpf_center;
+	int  pbt;
+
+	bool PbtActive;
+	int  RitFreq;
+	bool RitActive;
+	int  XitFreq;
+	bool XitActive;
+	int  split;
+
+	int  if_shift_min;
+	int  if_shift_max;
+	int  if_shift_step;
+	int  if_shift_mid;
+
+	int agcval;
+	int atten_state;
+	int preamp_state;
+	int nb_state;
+	int	nb_level;
+	int nr_state;
+	int nr_level;
+	int bk_state;
+	int an_level;
+	int m60_level;
+
+	int  rTONE;  // index into szTONES, PL_tones arrar of receive PL tones
+	int  tTONE;
+
+	bool has_xcvr_auto_on_off;
+	bool has_a2b;
+	bool has_b2a;
+	bool has_vfo_adj;
+	bool has_rit;
+	bool has_xit;
+	bool has_bfo;
+	bool has_power_control;
+	bool has_volume_control;
+	bool has_mode_control;
+	bool has_bandwidth_control;
+	bool has_dsp_controls;
+	bool has_FILTER;
+	bool has_micgain_control;
+	bool has_mic_line_control;
+	bool has_notch_control;
+	bool has_auto_notch;
+	bool has_noise_control;
+	bool has_noise_reduction_control;
+	bool has_noise_reduction;
+	bool has_attenuator_control;
+	bool has_preamp_control;
+	bool has_ifshift_control;
+	bool has_pbt_controls;
+	bool has_ptt_control;
+	bool has_tune_control;
+	bool has_swr_control;
+	bool has_alc_control;
+	bool has_idd_control;
+	bool has_agc_control;
+	bool has_rf_control;
+	bool has_sql_control;
+	bool has_smeter;
+	bool has_power_out;
+	bool has_line_out;
+	bool has_split;
+	bool has_split_AB;
+	bool has_data_port;
+	bool has_getvfoAorB;
+
+	bool has_extras;
+	bool has_nb_level;
+	bool has_agc_level;
+	bool has_cw_wpm;
+	bool has_cw_vol;
+	bool has_cw_spot;
+	bool has_cw_spot_tone;
+	bool has_cw_zero_in;
+	bool has_cw_qsk;
+	bool has_cw_break_in;
+	bool has_cw_delay;
+	bool has_cw_weight;
+	bool has_cw_keyer;
+	bool has_vox_onoff;
+	bool has_vox_gain;
+	bool has_vox_anti;
+	bool has_vox_hang;
+	bool has_vox_on_dataport;
+	bool has_compression;
+	bool has_compON;
+	bool use_line_in;
+	bool has_bpf_center;
+	bool has_special;
+	bool has_ext_tuner;
+	bool has_band_selection;
+
+	bool has_vfoAB;
+
+	bool restore_mbw;
+
+	bool has_get_info;
+
+	bool can_synch_clock;
+
+	bool has_voltmeter;
+
+// Icom Xcvr 
+	bool ICOMrig;
+	bool ICOMmainsub;
+	std::string pre_to;
+	std::string pre_fm;
+	std::string post;
+	std::string ok;
+	std::string bad;
+
+	int filA;
+	int filB;
+
+	int  data_type;
+
+// for pia TS2000 without a front panel
+	int  _noise_reduction_level;
+	int  _nrval1;
+	int  _nrval2;
+	int  _currmode;
+
+	int  read_N;			// if not zero then read N bytes for query response
+
+	std::string replystr;
+
+	std::string cmd; // command string
+	std::string rsp; // expected response string (header etc)
+
+protected:
+
+	std::string to_bcd_be(unsigned long long val, int len);
+	std::string to_bcd(unsigned long long val, int len);
+	unsigned long long fm_bcd (std::string bcd, int len);
+	unsigned long long fm_bcd_be(std::string bcd, int len);
+	std::string to_binary_be(unsigned long long val, int len);
+	std::string to_binary(unsigned long long val, int len);
+	unsigned long long fm_binary(std::string binary, int len);
+	unsigned long long fm_binary_be(std::string binary_be, int len);
+	std::string to_decimal_be(unsigned long long d, int len);
+	std::string to_decimal(unsigned long long d, int len);
+	unsigned long long fm_decimal(std::string decimal, int len);
+	unsigned long long fm_decimal_be(std::string decimal_be, int len);
+
+public:
+	rigbase();
+	virtual ~rigbase(){}
+
+	virtual void initialize();
+	virtual void post_initialize() {}
+	virtual void shutdown() {}
+
+	virtual bool check() { return false; }
+
+	virtual void set_data_port() {}
+
+	virtual bool get_info(void) {return false;}
+	virtual unsigned long long get_vfoA(void) {return A.freq;}
+	virtual void set_vfoA(unsigned long long f) {A.freq = f;}
+	virtual unsigned long long get_vfoB(void) {return B.freq;}
+	virtual void set_vfoB(unsigned long long f) {B.freq = f; set_vfoA(f);}
+
+	virtual void set_modeA(int val) {A.imode = val;}
+	virtual int  get_modeA() {return A.imode;}
+	virtual int  get_modetype(int n) {return 'U';}
+	virtual void set_modeB(int val) {B.imode = val; set_modeA(val);}
+	virtual int  get_modeB() {return B.imode;}
+	virtual void selectA(){ inuse = onA;}
+	virtual void selectB(){ inuse = onB;}
+	virtual void A2B(){}
+	virtual void B2A(){}
+	virtual int  get_vfoAorB(){return inuse;}
+	virtual bool isOnA(){return inuse == onA;}
+	virtual bool isOnB(){return inuse == onB;}
+
+	virtual void swapAB(){inuse = isOnA() ? onB : onA;}
+
+	virtual void set_bwA(int val) {A.iBW = val;}
+	virtual int  get_bwA() {return A.iBW;}
+	virtual int  get_bwA_val() { return bwA_val; }
+	virtual void set_bwB(int val) {B.iBW = val; set_bwA(val);}
+	virtual int  get_bwB() {return B.iBW;}
+	virtual int  get_bwB_val() { return bwB_val; }
+	virtual int  adjust_bandwidth(int m) {return 0;}
+	virtual int  def_bandwidth(int m) {return 0;}
+
+	virtual std::vector<std::string>&bwtable(int m) {return vNOBWS;}
+	virtual std::vector<std::string>&lotable(int m) {return vDSPLO;}
+	virtual std::vector<std::string>&hitable(int m) {return vDSPHI;}
+
+	virtual std::vector<std::string>&agctable(int m) {return vAGC_LABELS;}
+	virtual std::vector<std::string>&atttable(int m) {return vATT_LABELS;}
+	virtual std::vector<std::string>&pretable(int m) {return vPRE_LABELS;}
+	virtual std::vector<std::string>&nbtable(int m)  {return vNB_LABELS;}
+	virtual std::vector<std::string>&nrtable(int m)  {return vNR_LABELS;}
+	virtual std::vector<std::string>&bktable(int m)  {return vBK_LABELS;}
+	virtual std::vector<std::string>&m60table(int m) {return v60M_LABELS;}
+	virtual std::vector<std::string>&antable(int m)  {return vAN_LABELS;}
+
+	virtual const char *FILT(int val) { return "1"; }
+	virtual const char *nextFILT() { return "1";}
+
+	virtual int  get_FILT(int mode) { return 1; }
+	virtual void set_FILT(int filter) {}
+
+	virtual void set_BANDWIDTHS(std::string s) {}
+	virtual std::string get_BANDWIDTHS() { return ""; }
+
+	virtual void set_FILTERS(std::string s) {}
+	virtual std::string get_FILTERS() { return ""; }
+
+	virtual bool can_split() { return false;}
+	virtual void set_split(bool val);
+	virtual int  get_split();
+
+	virtual bool twovfos() {return false;}
+
+	virtual bool canswap() { return false; }
+
+	virtual int  get_agc() { return 0; }
+	virtual int  incr_agc() { return 0;}
+	virtual int  agc_val() { return 0; }
+
+	virtual int  get_smeter(void) {return -1;}
+	virtual int  get_swr(void) {return -1;}
+	virtual int  get_alc(void) {return -1;}
+	virtual double get_idd(void) {return 0;}
+
+	virtual void select_swr() {}
+	virtual void select_alc() {}
+	virtual void select_idd() {}
+	virtual int  get_power_out(void) {return -1;}
+
+	virtual double  get_voltmeter(void) { return -1; }
+
+	virtual const char *agc_label() { 
+		try {
+			return agc_labels_.at(agcval).c_str();
+		} catch (...) {
+			return "AGC";
+		}
+	}
+	virtual const char *att_label() {
+		try {
+			 return att_labels_.at(atten_state).c_str();
+		} catch (...) {
+			return "ATT";
+		}
+	}
+	virtual const char *pre_label() {
+		try {
+			 return pre_labels_.at(preamp_state).c_str();
+		} catch (...) {
+			return "PRE";
+		}
+	}
+	virtual const char *nb_label() {
+		try {
+			 return nb_labels_.at(nb_state).c_str();
+		} catch (...) {
+			return "NB";
+		}
+	}
+	virtual const char *nr_label() {
+		try {
+			 return nr_labels_.at(nr_state).c_str();
+		} catch (...) {
+			return "NR";
+		}
+	}
+	virtual const char *bk_label() {
+		try {
+			 return bk_labels_.at(bk_state).c_str();
+		} catch (...) {
+			return "BK";
+		}
+	}
+	virtual const char *m60_label() {
+		try {
+			 return m60_labels_.at(m60_level).c_str();
+		} catch (...) {
+			return "";
+		}
+	}
+	virtual const char *an_label() {
+		try {
+			 return an_labels_.at(an_level).c_str();
+		} catch (...) {
+			return "AN";
+		}
+	}
+
+int po_, po_val;
+int pmax;
+	virtual double get_power_control(void) {return po_;}
+	virtual void set_power_control(double val) {po_ = val;}
+	virtual void get_pc_min_max_step(double &min, double &max, double &step) {
+		min = 0; pmax = max = 100; step = 1; }
+
+int vl_;
+	virtual void set_volume_control(int val) {vl_ = val;}
+	virtual int  get_volume_control() {return vl_;}
+	virtual void get_vol_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_vol_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+int ptt_;
+int tune_;
+	virtual void set_PTT_control(int val) {ptt_ = val;}
+	virtual int  get_PTT() {return ptt_;}
+	virtual void tune_rig() {}
+	virtual void tune_rig(int how) {}
+	virtual int  get_tune() { return tune_; }
+
+	virtual void set_attenuator(int val) {atten_state = val;}
+	virtual int  next_attenuator() { 
+		if (atten_state == 0) atten_state = 1;
+		else atten_state = 0;
+		return atten_state;
+	}
+	virtual int  get_attenuator() {return atten_state;}
+
+	virtual void set_preamp(int val) {preamp_state = val;}
+	virtual int  next_preamp() { 
+		if (preamp_state == 0) preamp_state = 1;
+		else preamp_state = 0;
+		return preamp_state;
+	}
+	virtual int  get_preamp() {return preamp_state;}
+
+// CTCSS tones / offset
+	virtual void set_tones(int tx_tone, int rx_tone) { return; }
+	virtual void set_offset(int indx, int offset) { return; }
+
+int sh_;
+bool sh_on_;
+	virtual void set_if_shift(int val) {sh_ = val;}
+	virtual void set_if_shift_on(int on) { sh_on_ = on; }
+	virtual bool get_if_shift(int &val) {val = sh_; return sh_on_;}
+	virtual void get_if_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_if_mid() {};
+
+int no_, noval_;
+	virtual void set_notch(bool on, int val) { no_ = on; noval_ = val;}
+	virtual bool get_notch(int &val) {val = noval_; return no_;}
+	virtual void get_notch_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_notch_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+	virtual void set_noise(bool on) {nb_state = on;}
+	virtual int  get_noise(){return nb_state;}
+	virtual void set_nb_level(int val) {nb_level = val;}
+	virtual int  get_nb_level() { return nb_level; }
+	virtual void get_nb_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_nb_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+int nr_, nrval_;
+	virtual void set_noise_reduction(int val) {nr_ = val;}
+	virtual int  get_noise_reduction() {return nr_;}
+	virtual void set_noise_reduction_val(int val) {nrval_ = val;}
+	virtual int  get_noise_reduction_val() {return nrval_;}
+	virtual void get_nr_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_nr_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+	virtual void set_pbt_inner(int val) {}
+	virtual void set_pbt_outer(int val) {}
+	virtual void set_pbt(int inner, int outer) {}
+	virtual int  get_pbt_inner() {return 0;}
+	virtual int  get_pbt_outer() {return 0;}
+
+int mcval_;
+	virtual void set_mic_gain(int val) {mcval_ = val;}
+	virtual int  get_mic_gain() {return mcval_;}
+	virtual void get_mic_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_mic_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+	virtual void set_mic_line(int val) {}
+
+int sqval_;
+	virtual void set_squelch(int val) {sqval_ = val;}
+	virtual int  get_squelch() {return sqval_;}
+	virtual void get_squelch_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_squelch_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+int rfg_;
+	virtual void set_rf_gain(int val) {rfg_ = val;}
+	virtual int  get_rf_gain() {return rfg_;}
+	virtual void get_rf_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_rf_min_max_step(double &min, double &max, double &step) {
+		min = 0.0; max = 100.0; step = 1.0; }
+
+	virtual const char * get_modename_(int n){
+		try {
+			return modes_.at(n).c_str();
+		} catch (const std::exception& e) {
+			LOG_ERROR("%s", e.what());
+		}
+		return "";
+	}
+
+	virtual const char * get_bwname_(int bw, int md) {
+// read bw based on mode
+		try {
+			static std::vector<std::string>& pbwt = bwtable(md);
+			return pbwt.at(bw).c_str();
+		} catch (const std::exception& e) {
+			LOG_ERROR("%s", e.what());
+		}
+		return "";
+	}
+
+int ritval_;
+	virtual void setRit(int v) {ritval_ = v;}
+	virtual int  getRit() {return ritval_;}
+	virtual void get_RIT_min_max_step(int &min, int &max, int &step) {
+		min = -100; max = 100; step = 1; }
+	virtual void get_RIT_min_max_step(double &min, double &max, double &step) {
+		min = -100; max = 100; step = 1; }
+
+	virtual void setXit(int v) { XitFreq = v;}
+	virtual int  getXit() {return XitFreq;}
+	virtual void get_XIT_min_max_step(int &min, int &max, int &step) {
+		min = -100; max = 100; step = 1; }
+	virtual void get_XIT_min_max_step(double &min, double &max, double &step) {
+		min = -100; max = 100; step = 1; }
+
+int bfo_;
+	virtual void setBfo(int v) {bfo_ = v;}
+	virtual int  getBfo() {return bfo_;}
+	virtual void get_BFO_min_max_step(int &min, int &max, int &step) {
+		min = -100; max = 100; step = 1; }
+
+double vfo_;
+	virtual void setVfoAdj(double v) {vfo_ = v;}
+	virtual double getVfoAdj() {return vfo_;}
+	virtual void get_vfoadj_min_max_step(double &min, double &max, double &step) {
+		min = -100; max = 100; step = 1; }
+
+	virtual void set_line_out() {}
+	virtual int  get_line_out() { return 100; }
+	virtual void set_agc_level() {}
+	virtual void set_agc_level(int) {}
+
+	virtual void set_cw_weight() {}
+	virtual int  get_cw_weight() {return progStatus.cw_weight;}
+	virtual void get_cw_weight_min_max_step(double &min, double &max, double &step) {
+		min = 2.5; max = 4.5; step = 0.1; } // default for FT950/FT450D
+	virtual void set_cw_wpm() {}
+	virtual int  get_cw_wpm() {return progStatus.cw_wpm;}
+	virtual void get_cw_wpm_min_max(int &min, int &max) {
+		min = 5; max = 50; } // default for FT950/FT450D
+	virtual void enable_keyer() {}
+	virtual int  get_keyer() {return 0;}
+	virtual void set_break_in() {}
+	virtual int  get_break_in() {return 0;}
+
+	virtual void set_cw_qsk() {}
+	virtual int  get_cw_qsk() { return progStatus.cw_qsk; }
+	virtual void get_cw_qsk_min_max_step(double &min, double &max, double &step) {
+		min = 15; max = 30; step = 5; } // default for FT950/FT450D
+
+	virtual void set_cw_delay() {}
+	virtual int  get_cw_delay() { return progStatus.cw_delay; }
+	virtual void get_cw_delay_min_max_step(double &min, double &max, double &step) {
+		min = 30; max = 3000; step = 10; } // default for FT950/FT450D
+
+	virtual void set_cw_vol() {}
+	virtual int  get_cw_vol() { return progStatus.cw_vol; }
+	virtual void get_cw_vol_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; } // default for FT950/FT450D
+	virtual void get_cw_vol_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; } // default for FT950/FT450D
+
+	virtual void set_spot_onoff() {}
+	virtual bool set_cw_spot() {return false;}
+	virtual void set_cw_spot_tone() {}
+	virtual int  get_cw_spot_tone() { return progStatus.cw_spot_tone; }
+	virtual void get_cw_spot_tone_min_max_step(int &min, int &max, int &step) {
+		min = 300; max = 1050; step = 50; } // default for FT950/FT450D
+	virtual void get_cw_spot_tone_min_max_step(double &min, double &max, double &step) {
+		min = 300; max = 1050; step = 50; } // default for FT950/FT450D
+
+	virtual void zero_in() {}
+
+	virtual void set_vox_onoff() {}
+	virtual void set_vox_gain() {}
+
+	virtual void get_vox_gain_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; } // default for FT950/FT450D
+	virtual void get_vox_gain_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; } // default for FT950/FT450D
+	virtual void set_vox_anti() {}
+	virtual void get_vox_anti_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; } // default for FT950/FT450D
+	virtual void get_vox_anti_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; } // default for FT950/FT450D
+	virtual void set_vox_hang() {}
+	virtual void get_vox_hang_min_max_step(int &min, int &max, int &step) {
+		min = 30; max = 3000; step = 10; } // default for FT950/FT450D
+	virtual void get_vox_hang_min_max_step(double &min, double &max, double &step) {
+		min = 30; max = 3000; step = 10; } // default for FT950/FT450D
+
+	virtual void set_vox_on_dataport() {}
+	virtual void set_mon_vol() {}
+	virtual void set_squelch_level() {}
+	virtual void set_compression(int, int) {}
+	virtual void get_compression(int &on, int &val) { on = 0; val = 0; }
+	virtual void get_comp_min_max_step(int &min, int &max, int &step) {
+		min = 0; max = 100; step = 1; }
+	virtual void get_comp_min_max_step(double &min, double &max, double &step) {
+		min = 0; max = 100; step = 1; }
+
+	virtual void set_auto_notch(int v) {}
+	virtual int  get_auto_notch() {return 0;}
+	virtual void tuner_bypass() {}
+	virtual void enable_xmtr() {}
+	virtual void enable_tloop() {}
+	virtual void set_nb_level() {}
+	virtual void set_special(int v) {}
+	virtual void set_band_selection(int v) {}
+	virtual void get_band_selection(int v) {}
+	virtual void set_xcvr_auto_on() {}
+	virtual void set_xcvr_auto_off() {}
+
+	virtual void adjustCIV(uchar adr) {}
+
+	virtual void read_stream() {}
+
+	virtual int  parse_vfoA(std::string){return 0;}
+	virtual int  parse_vfoB(std::string){return 0;}
+	virtual int  parse_modeA(std::string){return 0;}
+	virtual int  parse_modeB(std::string){return 0;}
+	virtual int  parse_bwA(std::string){return 0;}
+	virtual int  parse_bwB(std::string){return 0;}
+	virtual int  parse_volume_control(std::string){return 0;}
+	virtual int  parse_power_control(std::string){return 0;}
+	virtual int  parse_rf_gain(std::string){return 0;}
+	virtual int  parse_mic_gain(std::string){return 0;}
+	virtual int  parse_attenuator(std::string){return 0;}
+	virtual int  parse_preamp(std::string){return 0;}
+	virtual int  parse_smeter(std::string){return 0;}
+	virtual int  parse_(std::string){return 0;}
+	virtual int  parse_noise(std::string){return 0;}
+	virtual int  parse_power_out(std::string){return 0;}
+	virtual int  parse_swr(std::string){return 0;}
+	virtual int  parse_alc(std::string){return 0;}
+	virtual int  parse_split(std::string){return 0;}
+
+	int waitN(int n, int timeout, const char *, int pr = HEX);
+	int wait_char(int ch, int n, int timeout, const char *, int pr = HEX);
+	int wait_crlf(std::string, std::string, int nr = 20, int timeout = 100, int pr = ASC);
+	int wait_string(std::string sz, int nr, int timeout = 100, int pr = ASC);
+	int waitfor(int nr, int timeout = 100, int pr = ASC);
+
+// IC-7610
+	virtual void set_digi_sel(bool) {}
+	virtual void set_digi_val(int) {}
+	virtual int  get_digi_sel() {return 0;}
+	virtual int  get_digi_val() {return 0;}
+	virtual void set_dual_watch(bool) {}
+	virtual int  get_dual_watch() {return 0;}
+	virtual void set_index_att(int) {}
+
+// more pia TS2000 without front panel!
+	int currmode() { return _currmode; }
+	int nrval1() { return _nrval1; }
+	int nrval2() { return _nrval2; }
+	int noise_reduction_level() { return _noise_reduction_level; }
+
+// TS990 monitor usurp'd use of IF shift control
+	virtual void set_monitor(bool) {}
+
+// TT-550 / at-11 internal tuner i/o commands
+	virtual void at11_bypass() {}
+	virtual void at11_autotune() {}
+	virtual void at11_cap_up() {}
+	virtual void at11_cap_dn() {}
+	virtual void at11_ind_up() {}
+	virtual void at11_ind_dn() {}
+	virtual void at11_loZ() {}
+	virtual void at11_hiZ() {}
+
+	std::string bcd255(int val);
+	int    num100(std::string bcd);
+	int    hexval(int hex);
+	int    hex2val(std::string hexval);
+
+// Yaesu force ID response before sending command
+	std::string IDstr;
+	bool id_OK(std::string ID, int wait);
+	void sendOK(std::string cmd);
+
+// KX3 power scale
+	int powerScale;
+	virtual int power_scale() { 
+		return 1; 
+	}
+	virtual int power_max() {
+		return pmax;
+	}
+
+// date/time synchronize
+	virtual void sync_date(char *dt) {
+//		printf("Synchronize date to: %s\n", dt);
+	}
+	virtual void sync_clock(char *tm) {
+//		printf("Sychronize time to: %s\n", tm);
+	}
+
+// QCX+ menu system
+	virtual std::string read_menu(int, int);
+};
+
+extern rigbase *rigs[];
+
+extern char bcdval[];
+
+struct PAIR { double p1; double p2; };
+#define define_PAIR(a) (sizeof(a) / sizeof(*a)), a
+
+class PAIRS {
+private:
+	size_t nbr;
+	std::vector<PAIR> pairs;
+public:
+	PAIRS(size_t num, const PAIR table[]) {
+		pairs.clear();
+		nbr = num;
+		for (size_t n = 0; n < nbr; n++)
+			pairs.push_back(table[n]);
+	}
+	~PAIRS() {};
+	double value(double val);
+};
+
+#endif

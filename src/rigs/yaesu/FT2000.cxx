@@ -1,0 +1,1175 @@
+// ----------------------------------------------------------------------------
+// Copyright (C) 2014
+//              David Freese, W1HKJ
+//
+// This file is part of flrig.
+//
+// flrig is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 3 of the License, or
+// (at your option) any later version.
+//
+// flrig is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// ----------------------------------------------------------------------------
+
+#include <iostream>
+#include <sstream>
+
+#include "yaesu/FT2000.h"
+#include "debug.h"
+#include "support.h"
+
+static const char FT2000name_[] = "FT-2000";
+
+#undef  NUM_MODES
+#define NUM_MODES  12
+
+static int mode_bwA[NUM_MODES] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+static int mode_bwB[NUM_MODES] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+static std::vector<std::string>FT2000modes_;
+static const char *vFT2000modes_[] = {
+"LSB", "USB", "CW", "FM", "AM", "RTTY-L", "CW-R", "PKT-L", "RTTY-U", "PKT-FM", "FM-N", "PKT-U"};
+
+static const char FT2000_mode_chr[] =  { 
+'1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C' };
+static const char FT2000_mode_type[] = { 
+'L', 'U', 'U', 'U', 'U', 'L', 'L', 'L', 'U', 'U', 'U', 'U' };
+
+static std::vector<std::string>FT2000_SSBwidths;
+static const char *vFT2000_SSBwidths[] = {
+"NORM", "200", "400", "600", "850", "1100", "1350", "1500", "1650", "1800", "1950", "2100", "2250"};
+static int FT2000_wvals_SSBwidths[] = {
+1,2,3,4,5,6,7,8,9,10,11,12,13, WVALS_LIMIT};
+
+static std::vector<std::string>FT2000_CWwidths;
+static const char *vFT2000_CWwidths[] = {
+"NORM", "50", "100", "200", "300", "400", "500", "800", "1200", "1400", "1700", "2000"};
+static int FT2000_wvals_CWwidths[] = {
+1,2,3,4,5,6,7,8,9,10,11,12, WVALS_LIMIT};
+
+static std::vector<std::string>FT2000_PKT_RTTYwidths;
+static const char *vFT2000_PKT_RTTYwidths[] = {
+"NORM", "25", "50", "100", "200", "300", "400"};
+static int FT2000_wvals_PKT_RTTYwidths[] = {
+1,2,3,4,5,6,7, WVALS_LIMIT};
+
+static std::vector<std::string>FT2000_AMFMwidths;
+static const char *vFT2000_AMFMwidths[] = {
+"NORM", "NARR"};
+static int FT2000_wvals_AMFMwidths[] = {
+1,2, WVALS_LIMIT};
+
+
+static std::vector<std::string>FT2000_US_60m;
+static const char *vFT2000_US_60m[] = {"", "126", "127", "128", "130"};
+// US has 5 60M presets. Using dummy numbers for all.
+// First "" means skip 60m sets in get_band_selection().
+// Maybe someone can do a cat command MC; on all 5 presets and add returned numbers above.
+// To send cat commands in flrig goto menu Config->Xcvr select->Send Cmd.
+
+static std::vector<std::string>& Channels_60m = FT2000_US_60m;
+
+//----------------------------------------------------------------------
+static std::vector<std::string>FT2000_att_labels;
+static const char *vFT2000_att_labels[] = { "ATT", "6 dB", "12 dB", "18 dB"};
+
+static std::vector<std::string>FT2000_pre_labels;
+static const char *vFT2000_pre_labels[] = { "PRE", "Amp 1", "Amp 2"};
+//----------------------------------------------------------------------
+
+static GUI rig_widgets[]= {
+	{ (Fl_Widget *)btnVol,        2, 125,  50 }, // 0
+	{ (Fl_Widget *)sldrVOLUME,   54, 125, 368 }, // 1
+	{ (Fl_Widget *)sldrRFGAIN,   54, 145, 156 }, // 2
+	{ (Fl_Widget *)sldrSQUELCH, 266, 145, 156 }, // 3
+
+	{ (Fl_Widget *)sldrMICGAIN,  54, 165, 156 }, // 4
+	{ (Fl_Widget *)btnNotch,    214, 165,  50 }, // 5
+	{ (Fl_Widget *)sldrNOTCH,   266, 165, 156 }, // 6
+
+	{ (Fl_Widget *)btnNR,         2, 185,  50 }, // 7
+	{ (Fl_Widget *)sldrNR,       54, 185, 156 }, // 8
+	{ (Fl_Widget *)btnIFsh,     214, 185,  50 }, // 9
+	{ (Fl_Widget *)sldrIFSHIFT, 266, 185, 156 }, // 10
+
+	{ (Fl_Widget *)sldrPOWER,    54, 205, 368 }, // 11
+
+	{ (Fl_Widget *)NULL,          0,   0,   0 }
+};
+
+void RIG_FT2000::initialize()
+{
+	VECTOR (FT2000modes_, vFT2000modes_);
+	VECTOR (FT2000_SSBwidths, vFT2000_SSBwidths);
+	VECTOR (FT2000_CWwidths, vFT2000_CWwidths);
+	VECTOR (FT2000_PKT_RTTYwidths, vFT2000_PKT_RTTYwidths);
+	VECTOR (FT2000_AMFMwidths, vFT2000_AMFMwidths);
+	VECTOR (FT2000_US_60m, vFT2000_US_60m);
+
+	modes_ = FT2000modes_;
+	bandwidths_ = FT2000_SSBwidths;
+	bw_vals_ = FT2000_wvals_SSBwidths;
+
+	VECTOR (FT2000_att_labels, vFT2000_att_labels);
+	VECTOR (FT2000_pre_labels, vFT2000_pre_labels);
+
+	att_labels_ = FT2000_att_labels;
+	pre_labels_ = FT2000_pre_labels;
+
+	rig_widgets[0].W = btnVol;
+	rig_widgets[1].W = sldrVOLUME;
+	rig_widgets[2].W = sldrRFGAIN;
+	rig_widgets[3].W = sldrSQUELCH;
+	rig_widgets[4].W = sldrMICGAIN;
+	rig_widgets[5].W = btnNotch;
+	rig_widgets[6].W = sldrNOTCH;
+	rig_widgets[7].W = btnNR;
+	rig_widgets[8].W = sldrNR;
+	rig_widgets[9].W = btnIFsh;
+	rig_widgets[10].W = sldrIFSHIFT;
+	rig_widgets[11].W = sldrPOWER;
+}
+
+RIG_FT2000::RIG_FT2000() {
+// base class values	
+	name_ = FT2000name_;
+	modes_ = FT2000modes_;
+	bandwidths_ = FT2000_SSBwidths;
+	bw_vals_ = FT2000_wvals_SSBwidths;
+
+	widgets = rig_widgets;
+
+	serial_baudrate = BR4800;
+	stopbits = 1;
+	serial_retries = 2;
+
+	serial_write_delay = 0;
+	serial_post_write_delay = 5;
+
+	serial_timeout = 50;
+	serial_rtscts = true;
+	serial_rtsplus = false;
+	serial_dtrplus = false;
+	serial_catptt = true;
+	serial_rtsptt = false;
+	serial_dtrptt = false;
+	modeA = 1;
+	bwA = 2;
+	def_mode = 1;
+	def_bw = 2;
+	def_freq = 14070000ULL;
+
+	has_band_selection =
+	has_extras =
+	has_smeter =
+	has_power_out =
+	has_power_control =
+	has_volume_control =
+	has_mode_control =
+	has_noise_control =
+	has_bandwidth_control =
+	has_rf_control =
+	has_sql_control =
+	has_micgain_control =
+	has_notch_control =
+	has_attenuator_control =
+	has_preamp_control =
+	has_ifshift_control =
+	has_ptt_control =
+	has_tune_control =
+	has_cw_break_in =
+	has_swr_control = 
+
+	has_idd_control =
+	has_voltmeter = true;
+
+// derived specific
+	notch_on = false;
+
+	m_60m_indx = 0;
+
+	precision = 10;
+	ndigits = 7;
+
+}
+
+void RIG_FT2000::get_band_selection(int v)
+{
+	int inc_60m = false;
+	cmd = "IF;";
+	wait_char(';', 27, 100, "get band", ASC);
+
+	set_trace(2, "get band", replystr.c_str());
+
+	size_t p = replystr.rfind("IF");
+	if (p == std::string::npos) return;
+	if (replystr[p+21] != '0') {	// vfo 60M memory mode
+		inc_60m = true;
+	}
+
+	if (v == 12) {	// 5MHz 60m presets
+		if (Channels_60m[0].empty()) return;	// no 60m Channels so skip
+		if (inc_60m) {
+			if (++m_60m_indx > (int)Channels_60m.size()) m_60m_indx = 0;
+		}
+		cmd.assign("MC").append(Channels_60m[m_60m_indx]).append(";");
+	} else {		// v == 1..11 band selection OR return to vfo mode == 0
+		if (inc_60m)
+			cmd = "VM;";
+		else {
+			if (v < 3)
+				v = v - 1;
+			cmd.assign("BS").append(to_decimal(v, 2)).append(";");
+		}
+	}
+
+	sendCommand(cmd);
+	showresp(WARN, ASC, "Select Band Stacks", cmd, replystr);
+}
+
+void RIG_FT2000::selectA()
+{
+	cmd = "VS0;";
+	sendCommand(cmd);
+	inuse = onA;
+}
+
+void RIG_FT2000::selectB()
+{
+	cmd = "VS1;";
+	sendCommand(cmd);
+	inuse = onB;
+}
+
+bool RIG_FT2000::check ()
+{
+	cmd = "FA;";
+	int ret = wait_char(';', 11, 100, "check", ASC);
+
+	rig_trace(2, "check()", replystr.c_str());
+
+	if (ret >= 11) return true;
+	return false;
+}
+
+unsigned long long RIG_FT2000::get_vfoA ()
+{
+	cmd = "FA;";
+	int ret = wait_char(';', 11, 100, "get vfoA", ASC);
+
+	rig_trace(2, "get_vfoA()", replystr.c_str());
+
+	if (ret < 11) return freqA;
+	size_t p = replystr.rfind("FA");
+	if (p == std::string::npos) return freqA;
+	unsigned long long f = 0;
+	for (size_t n = 2; n < 10; n++)
+		f = f*10 + replystr[p + n] - '0';
+	freqA = f;
+
+	return freqA;
+}
+
+void RIG_FT2000::set_vfoA (unsigned long long freq)
+{
+	freqA = freq;
+	cmd = "FA00000000;";
+	for (int i = 9; i > 1; i--) {
+		cmd[i] += freq % 10;
+		freq /= 10;
+	}
+	sendCommand(cmd, 0);
+}
+
+unsigned long long RIG_FT2000::get_vfoB ()
+{
+	cmd = "FB;";
+	int ret = wait_char(';', 11, 100, "get vfoB", ASC);
+
+	rig_trace(2, "get_vfoB()", replystr.c_str());
+
+	if (ret < 11) return freqB;
+	size_t p = replystr.rfind("FA");
+	if (p == std::string::npos) return freqB;
+	unsigned long long f = 0;
+	for (size_t n = 2; n < 10; n++)
+		f = f*10 + replystr[p + n] - '0';
+	freqB = f;
+
+	return freqB;
+}
+
+void RIG_FT2000::set_vfoB (unsigned long long freq)
+{
+	freqB = freq;
+	cmd = "FB00000000;";
+	for (int i = 9; i > 1; i--) {
+		cmd[i] += freq % 10;
+		freq /= 10;
+	}
+	sendCommand(cmd, 0);
+}
+
+int RIG_FT2000::get_smeter()
+{
+	if (inuse == onB)
+		cmd = "SM1;";
+	else
+		cmd = "SM0;";
+	int ret = wait_char(';', 7, 100, "get smeter", ASC);
+
+	rig_trace(2, "get_smeter()", replystr.c_str());
+
+	if (ret < 7) return 0;
+	size_t p = replystr.rfind("SM");
+	if (p == std::string::npos) return 0;
+	replystr[p + 6] = 0;
+	int mtr = atoi(&replystr[p + 3]);
+	mtr = mtr * 100.0 / 255.0;
+	return mtr;
+}
+
+int RIG_FT2000::get_swr()
+{
+	cmd = "RM6;";
+	int ret = wait_char(';', 7, 100, "get swr", ASC);
+
+	rig_trace(2, "get_swr()", replystr.c_str());
+
+	if (ret < 7) return 0;
+	size_t p = replystr.rfind("RM");
+	if (p == std::string::npos) return 0;
+	replystr[p + 6] = 0;
+	int mtr = atoi(&replystr[p + 3]);
+	return mtr / 2.56;
+}
+
+int RIG_FT2000::get_power_out()
+{
+	cmd = "RM5;";
+	int ret = wait_char(';', 7, 100, "get pwr out", ASC);
+
+	rig_trace(2, "get_power_out()", replystr.c_str());
+
+	if (ret < 7) return 0;
+	size_t p = replystr.rfind("RM");
+	if (p == std::string::npos) return 0;
+	replystr[p + 6] = 0;
+	double mtr = (double)(atoi(&replystr[p + 3]));
+	mtr = -6.6263535 + .11813178 * mtr + .0013607405 * mtr * mtr;
+	return (int)mtr;
+}
+
+double RIG_FT2000::get_power_control()
+{
+	cmd = "PC;";
+	int ret = wait_char(';', 6, 100, "get pwr ctl", ASC);
+
+	rig_trace(2, "get_power_control()", replystr.c_str());
+
+	if (ret < 6) return 0;
+	size_t p = replystr.rfind("PC");
+	if (p == std::string::npos) return 0;
+	replystr[p + 5] = 0;
+	int mtr = atoi(&replystr[p + 2]);
+	mtr = (int)(100.0 * mtr / 255.0);
+	return mtr;
+}
+
+// Transceiver power level
+void RIG_FT2000::set_power_control(double val)
+{
+	int ival = (int)(val * 255 / 100);
+	cmd = "PC000;";
+	for (int i = 4; i > 1; i--) {
+		cmd[i] += ival % 10;
+		ival /= 10;
+	}
+	sendCommand(cmd, 0);
+}
+
+// Volume control return 0 ... 100
+int RIG_FT2000::get_volume_control()
+{
+	cmd = "AG0;";
+	int ret = wait_char(';', 7, 100, "get vol", ASC);
+
+	rig_trace(2, "get_volume_control()", replystr.c_str());
+
+	if (ret < 7) return 0;
+	size_t p = replystr.rfind("AG");
+	if (p == std::string::npos) return 0;
+	replystr[p + 6] = 0;
+	int val = atoi(&replystr[p + 3]);
+	return (int)(val / 2.55);
+}
+
+void RIG_FT2000::set_volume_control(int val) 
+{
+	int ivol = (int)(val * 2.55);
+	cmd = "AG0000;";
+	for (int i = 5; i > 2; i--) {
+		cmd[i] += ivol % 10;
+		ivol /= 10;
+	}
+	sendCommand(cmd, 0);
+}
+
+// Tranceiver PTT on/off
+void RIG_FT2000::set_PTT_control(int val)
+{
+	if (val) sendCommand("TX1;", 0);
+	else	 sendCommand("TX0;", 0);
+	ptt_ = val;
+}
+
+int RIG_FT2000::get_PTT()
+{
+	cmd = "TX;";
+	rsp = "TX";
+	wait_char(';', 4, 100, "get PTT", ASC);
+
+	rig_trace(2, "get_PTT()", replystr.c_str());
+
+	size_t p = replystr.rfind(rsp);
+	if (p == std::string::npos) return ptt_;
+	ptt_ =  (replystr[p+2] != '0' ? 1 : 0);
+	return ptt_;
+}
+
+void RIG_FT2000::tune_rig(int val)
+{
+	switch (val) {
+		case 0:
+			cmd = "AC000;";
+			break;
+		case 1:
+			cmd = "AC001;";
+			break;
+		case 2:
+		default:
+			cmd = "AC002;";
+			break;
+	}
+	sendCommand(cmd);
+	showresp(WARN, ASC, "tune rig", cmd, replystr);
+	sett("tune_rig");
+}
+
+int RIG_FT2000::get_tune()
+{
+	cmd = rsp = "AC";
+	cmd += ';';
+	waitN(5, 100, "get tune", ASC);
+
+	rig_trace(2, "get_tuner status()", replystr.c_str());
+
+	size_t p = replystr.rfind(rsp);
+	if (p == std::string::npos) return 0;
+	int val = replystr[p+4] - '0';
+	return !(val < 2);
+}
+
+int RIG_FT2000::next_attenuator()
+{
+	switch(atten_state) {
+		case 0: return 1;
+		case 1: return 2;
+		case 2: return 3;
+		case 3: return 0;
+	}
+	return 0;
+}
+
+void RIG_FT2000::set_attenuator(int val)
+{
+	atten_state = val;
+	switch (val) {
+		case 1 :
+			cmd = "RA01;";
+			break;
+		case 2 :
+			cmd = "RA02;";
+			break;
+		case 3 :
+			cmd = "RA03;";
+			break;
+		case 0 :
+		default :
+			cmd = "RA00;";
+	}
+	sendCommand(cmd, 0);
+}
+
+int RIG_FT2000::get_attenuator()
+{
+	cmd = "RA0;";
+	int ret = wait_char(';', 5, 100, "get att", ASC);
+
+	rig_trace(2, "get_attenuator()", replystr.c_str());
+
+	if (ret < 5) {
+		return 0;
+	}
+	size_t p = replystr.rfind("RA");
+	if (p == std::string::npos) {
+		atten_state = 0;
+		return 0;
+	}
+	int reply = replystr[p + 3];
+	switch (reply) {
+		case '1' :
+			atten_state = 1;
+			break;
+		case '2' :
+			atten_state = 2;
+			break;
+		case '3' :
+			atten_state = 3;
+			break;
+		default :
+			atten_state = 0;
+			break;
+	}
+	return atten_state;
+}
+
+int RIG_FT2000::next_preamp()
+{
+	switch (preamp_state) {
+		case 0: return 1;
+		case 1: return 2;
+		case 2: return 0;
+	}
+	return 0;
+}
+
+void RIG_FT2000::set_preamp(int val)
+{
+	preamp_state = val;
+	switch (preamp_state) {
+		case 1 :
+			cmd = "PA01;";
+			break;
+		case 2 :
+			cmd = "PA02;";
+			break;
+		case 0 :
+		default :
+			cmd = "PA00;";
+	}
+	sendCommand(cmd, 0);
+}
+
+int RIG_FT2000::get_preamp()
+{
+	cmd = "PA0;";
+	int ret = wait_char(';', 5, 100, "get pre", ASC);
+
+	rig_trace(2, "get_preamp()", replystr.c_str());
+
+	if (ret < 5) {
+		preamp_state = 0;
+		return 0;
+	}
+	size_t p = replystr.rfind("PA");
+	if (p == std::string::npos) {
+		preamp_state = 0;
+		return 0;
+	}
+	int reply = replystr[p + 3];
+	switch (reply) {
+		case '1' :
+			preamp_state = 1;
+			break;
+		case '2' :
+			preamp_state = 2;
+			break;
+		case '0' :
+		default :
+			preamp_state = 0;
+	}
+	return preamp_state;
+}
+
+void RIG_FT2000::set_modeA(int val)
+{
+	modeA = val;
+	cmd = "MD0";
+	cmd += FT2000_mode_chr[val];
+	cmd += ';';
+	sendCommand(cmd, 0);
+}
+
+int RIG_FT2000::get_modeA()
+{
+	cmd = "MD0;";
+	int ret = wait_char(';', 5, 100, "get modeA", ASC);
+
+	rig_trace(2, "get_modeA()", replystr.c_str());
+
+	if (ret < 5) return modeA;
+	size_t p = replystr.rfind("MD");
+	if (p == std::string::npos) return modeA;
+	modeA = replystr[p + 3] - '1';
+	return modeA;
+}
+
+void RIG_FT2000::set_modeB(int val)
+{
+	modeA = val;
+	cmd = "MD1";
+	cmd += FT2000_mode_chr[val];
+	cmd += ';';
+	sendCommand(cmd, 0);
+}
+
+int RIG_FT2000::get_modeB()
+{
+	cmd = "MD1;";
+	int ret = wait_char(';', 5, 100, "get modeB", ASC);
+
+	rig_trace(2, "get_modeB()", replystr.c_str());
+
+	if (ret < 5) return modeB;
+	size_t p = replystr.rfind("MD");
+	if (p == std::string::npos) return modeB;
+	modeB = replystr[p + 3] - '1';
+	return modeB;
+}
+
+int RIG_FT2000::adjust_bandwidth(int m)
+{
+	switch (m) {
+		case 0 : case 1 :
+			bandwidths_ = FT2000_SSBwidths;
+			bw_vals_ = FT2000_wvals_SSBwidths;
+			bwA = 0;
+			break;
+		case 2 : case 6 :
+			bandwidths_ = FT2000_CWwidths;
+			bw_vals_ = FT2000_wvals_CWwidths;
+			bwA = 0;
+			break;
+		case 5 : case 7 : case 8 : case 11 :
+			bandwidths_ = FT2000_PKT_RTTYwidths;
+			bw_vals_ = FT2000_wvals_PKT_RTTYwidths;
+			bwA = 0;
+			break;
+		case 3 : case 4 : case 9 : case 10 :
+			bandwidths_ = FT2000_AMFMwidths;
+			bw_vals_ = FT2000_wvals_AMFMwidths;
+			bwA = 0;
+			break;
+	}
+	return bwA;
+}
+
+int RIG_FT2000::def_bandwidth(int m)
+{
+	int bw = adjust_bandwidth(m);
+	if (inuse == onB) {
+		if (mode_bwB[m] == -1)
+			mode_bwB[m] = bw;
+		return mode_bwB[m];
+	}
+	if (mode_bwA[m] == -1)
+		mode_bwA[m] = bw;
+	return mode_bwA[m];
+}
+
+std::vector<std::string>& RIG_FT2000::bwtable(int m)
+{
+	switch (m) {
+		case 0 : case 1 :
+			return FT2000_SSBwidths;
+			break;
+		case 2 : case 6 :
+			return FT2000_CWwidths;
+			break;
+		case 5 : case 7 : case 8 : case 11 :
+			return FT2000_PKT_RTTYwidths;
+			break;
+		case 3 : case 4 : case 9 : case 10 :
+			return FT2000_AMFMwidths;
+			break;
+	}
+	return FT2000_SSBwidths;
+}
+
+void RIG_FT2000::set_bwA(int val)
+{
+	bwA = val;
+
+	if (val == 0) {
+		sendCommand("NA00;", 0);
+		return;
+	}
+
+	val--;
+	switch (modeA) {
+//SSB
+		case 0 : case 1 :
+			cmd = "EX106";
+			if (val > 9) cmd += '1';
+			else         cmd += '0';
+			val %= 10;
+			cmd += val + '0';
+			cmd += ';';
+			sendCommand(cmd, 0);
+			break;
+//CW
+		case 2 : case 6 :
+			cmd = "EX097";
+			if (val > 9) cmd += '1';
+			else         cmd += '0';
+			val %= 10;
+			cmd += val + '0';
+			cmd += ';';
+			sendCommand(cmd, 0);
+			break;
+//PKT-RTTY
+		case 5 : case 7 : case 8 : case 11 :
+			cmd = "EX1030";
+			cmd += val + '0';
+			cmd += ';';
+			sendCommand(cmd, 0);
+			break;
+//AM-FM
+		case 3 : case 4 : case 9 : case 10 :
+			break;
+	}
+	sendCommand("NA01;", 0);
+	mode_bwA[modeA] = val;
+}
+
+int RIG_FT2000::get_bwA()
+{
+	return bwA;
+}
+
+void RIG_FT2000::set_bwB(int val)
+{
+	bwB = val;
+
+	if (val == 0) {
+		sendCommand("NA10;", 0);
+		mode_bwA[modeA] = val;
+		return;
+	}
+
+	val--;
+	switch (modeA) {
+//SSB
+		case 0 : case 1 :
+			cmd = "EX106";
+			if (val > 9) cmd += '1';
+			else         cmd += '0';
+			val %= 10;
+			cmd += val + '0';
+			cmd += ';';
+			sendCommand(cmd, 0);
+			break;
+//CW
+		case 2 : case 6 :
+			cmd = "EX097";
+			if (val > 9) cmd += '1';
+			else         cmd += '0';
+			val %= 10;
+			cmd += val + '0';
+			cmd += ';';
+			sendCommand(cmd, 0);
+			break;
+//PKT-RTTY
+		case 5 : case 7 : case 8 : case 11 :
+			cmd = "EX1030";
+			cmd += val + '0';
+			cmd += ';';
+			sendCommand(cmd, 0);
+			break;
+//AM-FM
+		case 3 : case 4 : case 9 : case 10 :
+			break;
+	}
+	sendCommand("NA11;", 0);
+	mode_bwA[modeA] = val;
+}
+
+int RIG_FT2000::get_bwB()
+{
+	return bwB;
+}
+
+std::string RIG_FT2000::get_BANDWIDTHS()
+{
+	std::stringstream s;
+	for (int i = 0; i < NUM_MODES; i++)
+		s << mode_bwA[i] << " ";
+	for (int i = 0; i < NUM_MODES; i++)
+		s << mode_bwB[i] << " ";
+	return s.str();
+}
+
+void RIG_FT2000::set_BANDWIDTHS(std::string s)
+{
+	std::stringstream strm;
+	strm << s;
+	for (int i = 0; i < NUM_MODES; i++)
+		strm >> mode_bwA[i];
+	for (int i = 0; i < NUM_MODES; i++)
+		strm >> mode_bwB[i];
+}
+
+int RIG_FT2000::get_modetype(int n)
+{
+	return FT2000_mode_type[n];
+}
+
+void RIG_FT2000::set_if_shift(int val)
+{
+	cmd = "IS0+0000;";
+	if (val < 0) cmd[3] = '-';
+	val = abs(val);
+	for (int i = 4; i > 0; i--) {
+		cmd[3+i] += val % 10;
+		val /= 10;
+	}
+	sendCommand(cmd, 0);
+}
+
+bool RIG_FT2000::get_if_shift(int &val)
+{
+	static int oldval = 0;
+	cmd = "IS0;";
+	int ret = wait_char(';', 9, 100, "get if shift", ASC);
+
+	rig_trace(2, "get_if_shift()", replystr.c_str());
+
+	if (ret < 9) return false;
+	size_t p = replystr.rfind("IS");
+	if (p == std::string::npos) return false;
+
+	replystr[p + 8] = 0;
+	val = atoi(&replystr[p + 3]);
+	if (val != 0 || oldval != val) {
+		oldval = val;
+		return true;
+	}
+	oldval = val;
+	return false;
+}
+
+void RIG_FT2000::get_if_min_max_step(int &min, int &max, int &step)
+{
+	min = -1000;
+	max = 1000;
+	step = 100;
+}
+
+void RIG_FT2000::set_notch(bool on, int val)
+{
+	cmd = "BP00000;";
+	if (on == false) {
+		sendCommand(cmd, 0);
+		notch_on = false;
+		return;
+	}
+	if (!notch_on) {
+		cmd[6] = '1'; // notch ON
+		sendCommand(cmd, 0);
+		cmd[6] = '0';
+		notch_on = true;
+	}
+	cmd[3] = '1'; // manual NOTCH position
+// set notch value offset by 200, ie: 001 -> 400
+	val = (-val / 9) + 200;
+	if (val < 1) val = 1;
+	if (val > 400) val = 400;
+	for (int i = 3; i > 0; i--) {
+		cmd[3 + i] += val % 10;
+		val /=10;
+	}
+	sendCommand(cmd, 0);
+}
+
+bool  RIG_FT2000::get_notch(int &val)
+{
+	bool ison = false;
+	cmd = "BP00;";
+	int ret = wait_char(';', 8, 100, "get notch", ASC);
+
+	rig_trace(2, "get_notch()", replystr.c_str());
+
+	if (ret < 8) return ison;
+	size_t p = replystr.rfind("BP");
+	if (p == std::string::npos) return ison;
+
+	if (replystr[p + 6] == '1') {
+		ison = true;
+		cmd = "BP01;";
+		ret = wait_char(';', 8, 100, "get notch freq", ASC);
+
+		rig_trace(2, "get_notch_val()", replystr.c_str());
+
+		if (ret < 8) return ison;
+		p = replystr.rfind("BP");
+		if (p == std::string::npos) return ison;
+		replystr[p + 7] = 0;
+		val = atoi(&replystr[p + 4]);
+		val -= 200;
+		val *= -9;
+	}
+	return ison;
+}
+
+void RIG_FT2000::get_notch_min_max_step(int &min, int &max, int &step)
+{
+	min = -1143;
+	max = +1143;
+	step = 9;
+}
+
+void RIG_FT2000::set_noise(bool b)
+{
+	if (b)
+		cmd = "NB01;";
+	else
+		cmd = "NB00;";
+	sendCommand(cmd, 0);
+}
+
+// val 0 .. 100
+void RIG_FT2000::set_mic_gain(int val)
+{
+	cmd = "MG000;";
+	val = (int)(val * 2.50);
+	for (int i = 3; i > 0; i--) {
+		cmd[1+i] += val % 10;
+		val /= 10;
+	}
+	sendCommand(cmd);
+	showresp(WARN, ASC, "SET mic", cmd, replystr);
+}
+
+int RIG_FT2000::get_mic_gain()
+{
+	cmd = rsp = "MG";
+	cmd += ';';
+	wait_char(';', 6, 100, "get mic", ASC);
+
+	rig_trace(2, "get_mic_gain()", replystr.c_str());
+
+	size_t p = replystr.rfind(rsp);
+	if (p == std::string::npos) return progStatus.mic_gain;
+	int val = atoi(&replystr[p+2]);
+	val = (int)(val / 2.50);
+	if (val > 100) val = 100;
+	return ceil(val);
+}
+
+void RIG_FT2000::get_mic_min_max_step(int &min, int &max, int &step)
+{
+	min = 0;
+	max = 100;
+	step = 1;
+}
+
+void RIG_FT2000::set_break_in()
+{
+	if (progStatus.break_in) {
+		cmd = "BI1;";
+		break_in_label("BK-IN");
+	} else {
+		cmd = "BI0;";
+		break_in_label("QSK ?");
+	}
+	sendCommand(cmd);
+	showresp(WARN, ASC, "SET break in on/off", cmd, replystr);
+	sett("set_break_in");
+}
+
+int RIG_FT2000::get_break_in()
+{
+	cmd = "BI;";
+	wait_char(';', 4, 100, "get break in", ASC);
+	progStatus.break_in = (replystr[2] == '1');
+	if (progStatus.break_in) {
+		break_in_label("BK-IN");
+		progStatus.cw_delay = 0;
+	} else {
+		break_in_label("QSK ?");
+//		get_qsk_delay();
+	}
+	return progStatus.break_in;
+}
+
+double RIG_FT2000::get_voltmeter()
+{
+	cmd = "RM8;";
+	std::string resp = "RM";
+
+	int mtr = 0;
+	double val = 0;
+
+	get_trace(1, "get_voltmeter()");
+	wait_char(';',7, 100, "get vdd", ASC);
+	gett("get_voltmeter");
+
+	size_t p = replystr.rfind(resp);
+	if (p != std::string::npos) {
+		mtr = atoi(&replystr[p+3]);
+		val = 10 * mtr / 170;
+		return val;
+	}
+
+	return -1;
+}
+
+double RIG_FT2000::get_idd()
+{
+	cmd = rsp = "RM7";
+	cmd += ';';
+	wait_char(';',10, 100, "get alc", ASC);
+	gett("get_idd");
+
+	size_t p = replystr.rfind(rsp);
+	if (p == std::string::npos) return 0;
+	if (p + 9 >= replystr.length()) return 0;
+	replystr[6] = '\x00';
+	double mtr = atoi(&replystr[p+3]);
+	return mtr / 10.0;
+}
+
+void RIG_FT2000::set_squelch(int val)
+{
+	cmd = "SQ0000;";
+	if (inuse == onB) {
+		cmd[2] = '1';
+		progStatus.squelch_B = val;
+	} else
+		progStatus.squelch = progStatus.squelch_A = val;
+
+	for (int i = 5; i > 2; i--) {
+		cmd[i] = val % 10 + '0';
+		val /= 10;
+	}
+
+	set_trace(1, "set_squelch()");
+	sendCommand(cmd);
+	sett("");
+	showresp(WARN, ASC, "SET squelch", cmd, replystr);
+}
+
+int  RIG_FT2000::get_squelch()
+{
+	int sqval_A = 0;
+	cmd = rsp = "SQ0";
+	cmd += ';';
+	get_trace(1, "get_squelch() [A]");
+	wait_char(';', 7, 100, "get squelch", ASC);
+	gett("");
+
+	size_t p = replystr.rfind(rsp);
+	if (p == std::string::npos) {
+		if (inuse == onB)
+			return progStatus.squelch_B;
+		return progStatus.squelch_A;
+	}
+	for (int i = 3; i < 6; i++) {
+		sqval_A *= 10;
+		sqval_A += replystr[p+i] - '0';
+	}
+
+	int sqval_B = 0;
+	cmd = rsp = "SQ1";
+	cmd += ';';
+	get_trace(1, "get_squelch() [B]");
+	wait_char(';', 7, 100, "get squelch", ASC);
+	gett("");
+
+	p = replystr.rfind(rsp);
+	if (p == std::string::npos) {
+		if (inuse == onB)
+			return progStatus.squelch_B;
+		return progStatus.squelch_A;
+	}
+	for (int i = 3; i < 6; i++) {
+		sqval_B *= 10;
+		sqval_B += replystr[p+i] - '0';
+	}
+
+	progStatus.squelch_A = ceil(sqval_A);
+	progStatus.squelch_B = ceil(sqval_B);
+
+	if (inuse == onB)
+		return progStatus.squelch_B;
+
+	return progStatus.squelch_A;
+}
+
+void RIG_FT2000::set_rf_gain(int val)
+{
+	char szcmd[15];
+
+	if (inuse == onB) {
+		progStatus.rfgain_B = val;
+		snprintf(szcmd, sizeof(szcmd), "RG1%03d;", (100 - val) * 255 / 100);
+		cmd = szcmd;
+		set_trace(1, "set_rfgain A()");
+	} else {
+		progStatus.rfgain = progStatus.rfgain_A = val;
+		snprintf(szcmd, sizeof(szcmd), "RG0%03d;", (100 - val) * 255 / 100);
+		cmd = szcmd;
+		set_trace(1, "set_rfgain B()");
+	}
+
+	sendCommand(cmd);
+	sett("");
+	showresp(WARN, ASC, "SET rfgain A/B", cmd, replystr);
+}
+
+int  RIG_FT2000::get_rf_gain()
+{
+	if (inuse == onB) {
+		int RGval_B = 0;
+		cmd = rsp = "RG1";
+		cmd += ';';
+		get_trace(1, "get_rfgain() [B]");
+		wait_char(';', 7, 100, "get rfgain", ASC);
+		gett("");
+
+		size_t p = replystr.rfind(rsp);
+		if (p == std::string::npos) {
+			if (inuse == onB)
+				return progStatus.rfgain_B;
+			return progStatus.rfgain_A;
+		}
+		sscanf(replystr.c_str(), "RG1%d;", &RGval_B);
+		progStatus.rfgain_B = (255 - RGval_B) * 100 / 255;
+		return progStatus.rfgain_B;
+	}
+
+	int RGval_A = 0;
+	cmd = rsp = "RG0";
+	cmd += ';';
+	get_trace(1, "get_rfgain() [A]");
+	wait_char(';', 7, 100, "get rfgain", ASC);
+	gett("");
+
+	size_t p = replystr.rfind(rsp);
+	if (p == std::string::npos) {
+		if (inuse == onB)
+			return progStatus.rfgain_B;
+		return progStatus.rfgain_A;
+	}
+	sscanf(replystr.c_str(), "RG0%d;", &RGval_A);
+	progStatus.rfgain_A = (255 - RGval_A) * 100 / 255;
+	return progStatus.rfgain_A;
+}

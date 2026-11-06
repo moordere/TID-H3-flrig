@@ -1,0 +1,980 @@
+// ----------------------------------------------------------------------------
+// Copyright (C) 2014
+//              David Freese, W1HKJ
+//
+// This file is part of flrig.
+//
+// flrig is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 3 of the License, or
+// (at your option) any later version.
+//
+// flrig is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// ----------------------------------------------------------------------------
+
+#include <stdlib.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+#include "rigbase.h"
+#include "util.h"
+#include "debug.h"
+#include "rig_io.h"
+#include "support.h"
+#include "socket_io.h"
+#include "tod_clock.h"
+#include "serial.h"
+
+#include "rigs.h"
+#include "xmlrpc_rig.h"
+
+#include "trace.h"
+
+const char *szNORIG = "NONE";
+
+std::vector<std::string> vNOMODES;
+const char *NOMODES[] = {"LSB", "USB"};
+
+std::vector<std::string> vNOBWS;
+const char *NOBWS[] = {"3200"};
+
+std::vector<std::string> vDSPLO;
+const char *DSPLO[] = {"200"};
+
+std::vector<std::string> vDSPHI;
+const char *DSPHI[] = {"3400"};
+
+const char *szdsptooltip = "dsp tooltip";
+const char *szbtnlabel = " ";
+const int  ibw_val = -1;
+
+static GUI basewidgets[] = { {NULL, 0, 0} };
+
+std::vector<std::string> &rigbase::modes_ = vNOMODES;
+std::vector<std::string> &rigbase::bandwidths_ = vNOBWS;
+std::vector<std::string> &rigbase::dsp_SL = vDSPLO;
+std::vector<std::string> &rigbase::dsp_SH = vDSPHI;
+
+std::vector<std::string> vAGC_LABELS;
+const char *AGCVAL[] = {"AGC"};
+
+std::vector<std::string> vATT_LABELS;
+const char *ATTVAL[] = {"ATT"};
+
+std::vector<std::string> vPRE_LABELS;
+const char *PREVAL[] = {"PRE"};
+
+std::vector<std::string> vNB_LABELS;
+const char *NBVAL[] = {"NB"};
+
+std::vector<std::string> vNR_LABELS;
+const char *NRVAL[] = {"NR"};
+
+std::vector<std::string> vBK_LABELS;
+const char *BKVAL[] = {"BK"};
+
+std::vector<std::string> v60M_LABELS;
+const char *m60VAL[] = {""};
+
+std::vector<std::string> vAN_LABELS;
+const char *ANVAL[] = {"AN"};
+
+std::vector<std::string> &rigbase::agc_labels_ = vAGC_LABELS;
+std::vector<std::string> &rigbase::att_labels_ = vATT_LABELS;
+std::vector<std::string> &rigbase::pre_labels_ = vPRE_LABELS;
+std::vector<std::string> &rigbase::nb_labels_ = vNB_LABELS;
+std::vector<std::string> &rigbase::nr_labels_ = vNR_LABELS;
+std::vector<std::string> &rigbase::bk_labels_ = vBK_LABELS;
+std::vector<std::string> &rigbase::m60_labels_ = v60M_LABELS;
+std::vector<std::string> &rigbase::an_labels_ = vAN_LABELS;
+
+rigbase::rigbase()
+{
+	IDstr = "";
+	name_ = szNORIG;
+
+	modes_ = vNOMODES;
+	bandwidths_ = vNOBWS;
+	dsp_SL = vDSPLO;
+	SL_tooltip = szdsptooltip;
+	SL_label = szbtnlabel;
+	dsp_SH = vDSPHI;
+	SH_tooltip = szdsptooltip;
+	SH_label = szbtnlabel;
+	bw_vals_ = &ibw_val;
+
+	initialize();
+//	agc_labels_ = vAGC_LABELS;
+//	att_labels_ = vATT_LABELS;
+//	pre_labels_ = vPRE_LABELS;
+//	nb_labels_  = vNR_LABELS;
+//	nr_labels_  = vNB_LABELS;
+//	bk_labels_  = vBK_LABELS;
+//	m60_labels_ = v60M_LABELS;
+//	an_labels_  = vAN_LABELS;
+
+	io_class = SERIAL;
+
+	widgets = basewidgets;
+
+	stopbits = 2;
+
+	serial_write_delay = 0;
+	serial_post_write_delay = 0;
+
+	serloop_timing = 200; // msec, 5x / second
+
+	CIV = 0;
+	defaultCIV = 0;
+	USBaudio = false;
+
+	has_xcvr_auto_on_off =
+	serial_echo =
+	has_vfo_adj =
+	has_rit =
+	has_xit =
+	has_bfo =
+	has_power_control =
+	has_volume_control =
+	has_mode_control =
+	has_bandwidth_control =
+	has_dsp_controls =
+	has_micgain_control =
+	has_mic_line_control =
+	has_auto_notch =
+	has_notch_control =
+	has_noise_control =
+	has_noise_reduction_control =
+	has_noise_reduction =
+	has_attenuator_control =
+	has_preamp_control =
+	has_ifshift_control =
+	has_pbt_controls =
+	has_FILTER =
+	has_ptt_control =
+	has_tune_control =
+	has_swr_control =
+	has_alc_control =
+	has_idd_control =
+	has_agc_control =
+	has_rf_control =
+	has_sql_control =
+	has_data_port =
+	restore_mbw =
+
+	has_extras =
+	has_nb_level =
+	has_agc_level =
+	has_cw_wpm =
+	has_cw_vol =
+	has_cw_spot =
+	has_cw_spot_tone =
+	has_cw_qsk =
+	has_cw_break_in =
+	has_cw_delay =
+	has_cw_weight =
+	has_cw_keyer =
+	has_cw_zero_in =
+	has_vox_onoff =
+	has_vox_gain =
+	has_vox_anti =
+	has_vox_hang =
+	has_vox_on_dataport =
+	has_compression =
+	has_compON =
+	use_line_in =
+	has_bpf_center =
+	has_special =
+	has_ext_tuner =
+	has_smeter =
+	has_power_out =
+	has_line_out =
+//	has_split =
+	has_split_AB =
+	has_band_selection =
+	has_get_info =
+	has_getvfoAorB =
+	has_voltmeter =
+	ICOMrig =
+	ICOMmainsub =
+	can_synch_clock =
+	has_a2b =
+	has_vfoAB = false;
+
+	data_type = DT_BINARY;
+
+	A.freq = 14070000ULL;
+	A.imode = 1;
+	A.iBW = 0;
+	A.bw_val = 800;
+	B.freq = 14070000ULL;
+	B.imode = 1;
+	B.iBW = 0;
+	B.bw_val = 800;
+	inuse = onA;
+	precision = 1;
+	ndigits = 10;
+	can_change_alt_vfo = false;
+
+	freqA = 14070000ULL;
+	modeA = 1;
+	bwA = 0;
+	freqB = 14070000ULL;
+	modeB = 1;
+	bwB = 0;
+
+	def_freq = 14070000ULL;
+	def_mode = 1;
+	def_bw = 0;
+	bpf_center = 0;
+	pbt = 0;
+
+	ptt_ = tune_ = 0;
+
+	rTONE = tTONE = 8;
+
+	max_power = 100;
+
+	active_mode = 0; // wbx
+
+	if_shift_min = -1500;
+	if_shift_max = 1500;
+	if_shift_step = 10;
+	if_shift_mid = 0;
+
+	agcval = 0;
+	atten_state = 0;
+	preamp_state = 0;
+	nb_state = 0;
+	nr_state = 0;
+	bk_state = 0;
+	m60_level = 0;
+	an_level = 0;
+
+	read_N = 0;
+
+	initialize();
+}
+
+void rigbase::initialize()
+{
+	VECTOR( vNOMODES, NOMODES );
+	VECTOR( vNOBWS, NOBWS );
+	VECTOR( vDSPLO, DSPLO );
+	VECTOR( vDSPHI, DSPHI );
+
+	VECTOR( vAGC_LABELS, AGCVAL );
+	agc_labels_ = vAGC_LABELS;
+
+	VECTOR( vATT_LABELS, ATTVAL );
+	att_labels_ = vATT_LABELS;
+
+	VECTOR( vPRE_LABELS, PREVAL );
+	pre_labels_ = vPRE_LABELS;
+
+	VECTOR( vNB_LABELS, NBVAL );
+	nb_labels_ = vNB_LABELS;
+
+	VECTOR( vNR_LABELS, NRVAL );
+	nr_labels_ = vNR_LABELS;
+
+	VECTOR( vBK_LABELS, BKVAL );
+	bk_labels_ = vBK_LABELS;
+
+	VECTOR( v60M_LABELS, m60VAL );
+	m60_labels_ = v60M_LABELS;
+
+	VECTOR( vAN_LABELS, ANVAL );
+	an_labels_ = vAN_LABELS;
+
+	modes_ 		= vNOMODES;
+	bandwidths_	= vNOBWS;
+	dsp_SL		= vDSPLO;
+	dsp_SH		= vDSPHI;
+
+
+}
+
+std::string rigbase::to_bcd_be(unsigned long long val, int len)
+{
+	unsigned char a;
+	int numchars = len / 2;
+	std::string bcd = "";
+	if (len & 1) numchars ++;
+	for (int i = 0; i < numchars; i++) {
+		a = 0;
+		a |= val % 10;
+		val /= 10;
+		a |= (val % 10)<<4;
+		val /= 10;
+		bcd += a;
+	}
+	return bcd;
+}
+
+std::string rigbase::to_bcd(unsigned long long val, int len)
+{
+	std::string bcd_be = to_bcd_be(val, len);
+	std::string bcd = "";
+	int bcdlen = bcd_be.size();
+	for (int i = bcdlen - 1; i >= 0; i--)
+		bcd += bcd_be[i];
+	return bcd;
+}
+
+unsigned long long rigbase::fm_bcd (std::string bcd, int len)
+{
+	int i;
+	unsigned long long f = 0;
+	int numchars = len/2;
+	if (len & 1) numchars ++;
+	for (i = 0; i < numchars; i++) {
+		f *=10;
+		f += (bcd[i] >> 4) & 0x0F;
+		f *= 10;
+		f += bcd[i] & 0x0F;
+	}
+	return f;
+}
+
+
+unsigned long long rigbase::fm_bcd_be(std::string bcd, int len)
+{
+	char temp;
+	int numchars = len/2;
+	if (len & 1) numchars++;
+	for (int i = 0; i < numchars / 2; i++) {
+		temp = bcd[i];
+		bcd[i] = bcd[numchars -1 - i];
+		bcd[numchars -1 - i] = temp;
+	}
+	return fm_bcd(bcd, len);
+}
+
+std::string rigbase::to_binary_be(unsigned long long val, int len)
+{
+	static std::string bin = "";
+	for (int i = 0; i < len; i++) {
+		bin += val & 0xFF;
+		val >>= 8;
+	}
+	return bin;
+}
+
+std::string rigbase::to_binary(unsigned long long val, int len)
+{
+	static std::string bin = "";
+	std::string bin_be = to_binary_be(val, len);
+	int binlen = bin_be.size();
+	for (int i = binlen - 1; i >= 0; i--)
+		bin += bin_be[i];
+	return bin;
+}
+
+unsigned long long rigbase::fm_binary(std::string binary, int len)
+{
+	int i;
+	unsigned long long f = 0;
+	for (i = 0; i < len; i++) {
+		f *= 256;
+		f += (unsigned char)binary[i];
+	}
+	return f;
+}
+
+unsigned long long rigbase::fm_binary_be(std::string binary_be, int len)
+{
+	unsigned char temp;
+	int numchars = len/2;
+	if (len & 1) numchars++;
+	for (int i = 0; i < numchars / 2; i++) {
+		temp = binary_be[i];
+		binary_be[i] = binary_be[numchars -1 - i];
+		binary_be[numchars -1 - i] = temp;
+	}
+	return fm_binary(binary_be, len);
+}
+
+std::string rigbase::to_decimal_be(unsigned long long d, int len)
+{
+	static std::string sdec_be;
+	sdec_be.clear();
+	for (int i = 0; i < len; i++) {
+		sdec_be += (char)((d % 10) + '0');
+		d /= 10;
+	}
+	return sdec_be;
+}
+
+std::string rigbase::to_decimal(unsigned long long d, int len)
+{
+	static std::string sdec;
+	sdec.clear();
+	std::string sdec_be = to_decimal_be(d, len);
+	int bcdlen = sdec_be.size();
+	for (int i = bcdlen - 1; i >= 0; i--)
+		sdec += sdec_be[i];
+	return sdec;
+}
+
+unsigned long long rigbase::fm_decimal(std::string decimal, int len)
+{
+	unsigned long long d = 0;
+	for (int i = 0; i < len; i++) {
+		d *= 10;
+		d += decimal[i] - '0';
+	}
+	return d;
+}
+
+unsigned long long rigbase::fm_decimal_be(std::string decimal_be, int len)
+{
+	unsigned char temp;
+	int numchars = len/2;
+	if (len & 1) numchars++;
+	for (int i = 0; i < numchars / 2; i++) {
+		temp = decimal_be[i];
+		decimal_be[i] = decimal_be[numchars -1 - i];
+		decimal_be[numchars -1 - i] = temp;
+	}
+	return fm_decimal(decimal_be, len);
+}
+
+//======================================================================
+// translation 0..255 <==> 0..100
+// for Icom controls
+//======================================================================
+
+static int set100[] =
+{  0,  3,  6,  8, 11, 13, 16, 18, 21, 23,
+  26, 29, 31, 34, 36, 39, 41, 44, 46, 49,
+  51, 54, 57, 59, 62, 64, 67, 69, 72, 74,
+  77, 80, 82, 85, 87, 90, 92, 95, 97,100,
+ 102,105,108,110,113,115,118,120,123,125,
+ 128,131,133,136,138,141,143,146,148,151,
+ 153,156,159,161,164,166,169,171,174,176,
+ 179,182,184,187,189,192,194,197,199,202,
+ 204,207,210,212,215,217,220,222,225,227,
+ 230,233,235,238,240,243,245,248,250,253,255};
+
+std::string rigbase::bcd255(int val)
+{
+	return to_bcd(set100[(int)(val)], 3);
+}
+
+int rigbase::num100(std::string bcd)
+{
+	int val = fm_bcd(bcd, 3);
+	for (int n = 0; n < 101; n++) {
+		if (set100[n] > val)  return n - 1;
+		if (set100[n] == val) return n;
+	}
+	return 0;
+}
+
+int rigbase::hexval(int hex)
+{
+	int val = 0;
+	val += 10 * ((hex >> 4) & 0x0F);
+	val += hex & 0x0F;
+	return val;
+}
+
+int rigbase::hex2val(std::string hexstr)
+{
+	return 100 * hexval(hexstr[0]) + hexval(hexstr[1]);
+}
+
+
+//======================================================================
+
+int rigbase::waitN(int n, int timeout, const char *sz, int pr)
+{
+	guard_lock reply_lock(&mutex_replystr, std::string(__func__) );
+
+	int retnbr = 0;
+
+	replystr.clear();
+
+	if (progStatus.xmlrpc_rig) {
+		replystr = xml_cat_string(cmd);
+		return replystr.length();
+	}
+
+	if(!progStatus.use_tcpip && !RigSerial->IsOpen()) {
+		LOG_DEBUG("TEST %s", sz);
+		return 0;
+	}
+
+test_trace( 3 , __func__, " cmd: ", str2hex(cmd.c_str(), cmd.length()));
+
+	if (progStatus.use_tcpip) {
+		send_to_remote(cmd);
+	}
+	else {
+		RigSerial->FlushBuffer();
+		RigSerial->WriteBuffer(cmd.c_str(), cmd.length());
+	}
+
+	ullint tstart = zmsec();
+	ullint tout = tstart + progStatus.serial_timeout; // minimum of 100 msec
+	std::string tempstr;
+	int nret;
+//std::cout << "waitN( " << n << ", " << timeout << ", " << sz << ", " << pr << ")" << std::endl;
+	do {
+		tempstr.clear();
+		if (progStatus.use_tcpip) {
+			nret = read_from_remote(tempstr);
+		}
+		else {
+			nret = RigSerial->ReadBuffer(tempstr, n - retnbr);
+		}
+		if (nret) {
+			for (int nc = 0; nc < nret; nc++)
+				replystr += tempstr[nc];
+			retnbr += nret;
+			tout = zmsec() + progStatus.serial_timeout;
+		}
+		if (retnbr >= n)
+			break;
+		MilliSleep(1);
+	} while  ( zmsec() < tout );
+
+test_trace(3, __func__, " read: ", str2hex(replystr.c_str(), replystr.length()));
+
+	static char ctrace[1000];
+	memset(ctrace, 0, 1000);
+	int t = zmsec() - tstart;
+	snprintf( ctrace, sizeof(ctrace), "%s: read %d bytes in %d msec, %s",
+		sz, retnbr, t,
+		(pr == HEX ? str2hex(replystr.c_str(), replystr.length()): replystr.c_str()) );
+
+//std::cout << ctrace << std::endl;
+
+	if (SERIALDEBUG)
+		ser_trace(1, ctrace);
+
+	if ( t > timeout) failure_trace(1, ctrace);
+
+	return retnbr;
+
+}
+
+int rigbase::wait_char(int ch, int n, int timeout, const char *sz, int pr)
+{
+	guard_lock reply_lock(&mutex_replystr, std::string(__func__) );
+
+	std::string wait_str = " ";
+	wait_str[0] = ch;
+
+	int retnbr = 0;
+
+	replystr.clear();
+
+	if (progStatus.xmlrpc_rig) {
+		replystr = xml_cat_string(cmd);
+		return replystr.length();
+	}
+
+	if(!progStatus.use_tcpip && !RigSerial->IsOpen()) {
+		LOG_DEBUG("TEST %s", sz);
+		return 0;
+	}
+
+	if (progStatus.use_tcpip) {
+		send_to_remote(cmd);
+	}
+	else {
+		RigSerial->FlushBuffer();
+		RigSerial->WriteBuffer(cmd.c_str(), cmd.length());
+	}
+
+	ullint tstart = zmsec();
+	ullint tout = tstart + timeout;
+	std::string tempstr;
+	int nret;
+
+	int tries = 0;
+	do  {
+		++tries;
+		tempstr.clear();
+		if (progStatus.use_tcpip) {
+			nret = read_from_remote(tempstr);
+		}
+		else {
+			nret = RigSerial->ReadBuffer(tempstr, n - retnbr, wait_str);
+		}
+		if (nret) {
+			for (int nc = 0; nc < nret; nc++)
+				replystr += tempstr[nc];
+			retnbr += nret;
+			tout = zmsec() + progStatus.serial_timeout;
+		}
+		if (retnbr >= n)
+			break;
+
+		if (replystr.find(wait_str) != std::string::npos)
+			break;
+
+		MilliSleep(1);
+	} while ( zmsec() < tout );
+
+	static char ctrace[1000];
+	memset(ctrace, 0, 1000);
+	snprintf( ctrace, sizeof(ctrace), "%s: read %d bytes in %d msec, %d tries, %s",
+		sz, retnbr,
+		(int)(zmsec() - tstart),
+		tries,
+		(pr == HEX ? str2hex(replystr.c_str(), replystr.length()): replystr.c_str()) );
+
+	test_trace(1, ctrace);
+
+	LOG_DEBUG ("%s", ctrace);
+
+if (replystr.find("TX") != std::string::npos)
+xml_trace(5, ztime(), " ", __func__, " ", ctrace);
+
+	return retnbr;
+}
+
+int rigbase::wait_crlf(std::string cmd, std::string sz, int nr, int timeout, int pr)
+{
+	guard_lock reply_lock(&mutex_replystr, std::string(__func__) );
+
+	char crlf[3] = "\r\n";
+
+	int retnbr = 0;
+
+	if (progStatus.xmlrpc_rig) {
+		replystr = xml_cat_string(cmd);
+		return replystr.length();
+	}
+
+	replystr.clear();
+
+	if(!progStatus.use_tcpip && !RigSerial->IsOpen()) {
+		return 0;
+	}
+
+	if (progStatus.use_tcpip) {
+		send_to_remote(cmd);
+	}
+	else {
+		RigSerial->FlushBuffer();
+		RigSerial->WriteBuffer(cmd.c_str(), cmd.length());
+	}
+
+	ullint tstart = zmsec();
+	ullint tout = zmsec() + timeout + progStatus.serial_timeout;
+	std::string tempstr;
+	int nret;
+
+	do {
+		tempstr.clear();
+		if (progStatus.use_tcpip) {
+			nret = read_from_remote(tempstr);
+		}
+		else {
+			nret = RigSerial->ReadBuffer(tempstr, nr - retnbr, crlf);
+		}
+		if (nret) {
+			replystr.append(tempstr);
+			retnbr += nret;
+			tout = zmsec() + timeout + progStatus.serial_timeout;
+		}
+
+		if (replystr.find(crlf) != std::string::npos)
+			break;
+
+		if (retnbr >= nr) break;
+
+		MilliSleep(1);
+	} while ( zmsec() < tout );
+
+	static char ctrace[1000];
+	memset(ctrace, 0, 1000);
+	std::string srx = replystr;
+	if (srx[0] == '\n') srx.replace(0,1,"<lf>");
+	size_t psrx = srx.find("\r\n");
+	if (psrx != std::string::npos)
+		srx.replace(psrx, 2, "<cr><lf>");
+
+	snprintf( ctrace, sizeof(ctrace), "%s: read %d bytes in %d msec, %s", 
+		sz.c_str(), retnbr,
+		(int)(zmsec() - tstart),
+		srx.c_str());
+
+	if (SERIALDEBUG)
+		ser_trace(1, ctrace);
+
+	LOG_DEBUG ("%s", ctrace);
+
+	return retnbr;
+}
+
+int rigbase::wait_string(std::string sz, int nr, int timeout, int pr)
+{
+	guard_lock reply_lock(&mutex_replystr, std::string(__func__) );
+
+	int retnbr = 0;
+
+	if (progStatus.xmlrpc_rig) {
+		replystr = xml_cat_string(cmd);
+		return replystr.length();
+	}
+
+	replystr.clear();
+
+	if(!progStatus.use_tcpip && !RigSerial->IsOpen()) {
+		LOG_DEBUG("TEST %s", sz.c_str());
+		return 0;
+	}
+
+	if (progStatus.use_tcpip) {
+		send_to_remote(cmd);
+	}
+	else {
+		RigSerial->FlushBuffer();
+		RigSerial->WriteBuffer(cmd.c_str(), cmd.length());
+	}
+
+	ullint tstart = zmsec();
+	ullint tout = zmsec() + timeout + progStatus.serial_timeout;
+	std::string tempstr;
+	int nret;
+
+	do {
+		tempstr.clear();
+		if (progStatus.use_tcpip) {
+			nret = read_from_remote(tempstr);
+		}
+		else {
+			nret = RigSerial->ReadBuffer(tempstr, nr - retnbr, sz);
+		}
+		if (nret) {
+			replystr.append(tempstr);
+			retnbr += nret;
+			tout = zmsec() + timeout + progStatus.serial_timeout;
+		}
+
+		if (replystr.find(sz) != std::string::npos)
+			break;
+
+		if (retnbr >= nr) break;
+
+		MilliSleep(1);
+	} while ( zmsec() < tout );
+
+	static char ctrace[1000];
+	memset(ctrace, 0, 1000);
+
+	snprintf( ctrace, sizeof(ctrace), "%s: read %d bytes in %d msec, %s", 
+		sz.c_str(), retnbr,
+		(int)(zmsec() - tstart),
+		replystr.c_str());
+
+	if (SERIALDEBUG)
+		ser_trace(1, ctrace);
+
+	LOG_DEBUG ("%s", ctrace);
+
+	return retnbr;
+}
+
+int rigbase::waitfor(int nr, int timeout, int pr)
+{
+	guard_lock reply_lock(&mutex_replystr, std::string(__func__) );
+
+	int retnbr = 0;
+
+	if (progStatus.xmlrpc_rig) {
+		replystr = xml_cat_string(cmd);
+//std::cout << "replystr: " << replystr << std::endl;
+		return replystr.length();
+	}
+
+	replystr.clear();
+
+	if(!progStatus.use_tcpip && !RigSerial->IsOpen()) {
+		return 0;
+	}
+
+	if (progStatus.use_tcpip) {
+		send_to_remote(cmd);
+	}
+	else {
+		RigSerial->FlushBuffer();
+		RigSerial->WriteBuffer(cmd.c_str(), cmd.length());
+	}
+
+	ullint tstart = zmsec();
+	ullint tout = zmsec() + timeout + progStatus.serial_timeout;
+
+	std::string tempstr;
+	int nret;
+
+	do {
+		tempstr.clear();
+		if (progStatus.use_tcpip) {
+			nret = read_from_remote(tempstr);
+		}
+		else {
+			nret = RigSerial->ReadBuffer(tempstr, nr - retnbr);
+		}
+		if (nret) {
+			replystr.append(tempstr);
+			retnbr += nret;
+			tout = zmsec() + timeout + progStatus.serial_timeout;
+		}
+		if (retnbr >= nr) break;
+		MilliSleep(1);
+	} while ( zmsec() < tout );
+
+	static char ctrace[1000];
+	memset(ctrace, 0, 1000);
+
+	snprintf( ctrace, sizeof(ctrace), "read %d bytes in %d msec, %s", 
+		retnbr,
+		(int)(zmsec() - tstart),
+		replystr.c_str());
+
+	if (SERIALDEBUG)
+		ser_trace(1, ctrace);
+
+	LOG_DEBUG ("%s", ctrace);
+
+	return retnbr;
+}
+
+// Yaesu transceiver - wait for response to identifier request
+// return boolean state of response
+// ID  - for most
+// AI  - for FTdx9000
+// wait - wait nnn milliseconds before declaring transceiver DOA
+//        default 200 msec
+// retry - number of retries, default
+bool rigbase::id_OK(std::string ID, int wait)
+{
+	if (progStatus.xmlrpc_rig) {
+		replystr = xml_cat_string(cmd);
+//std::cout << "replystr: " << replystr << std::endl;
+		return replystr.length();
+	}
+
+	guard_lock reply_lock(&mutex_replystr, std::string(__func__) );
+
+	std::string buff;
+	int retn = 0;
+	size_t tout = 0;
+	for (int n = 0; n < progStatus.serial_retries; n++) {
+		if (progStatus.use_tcpip) {
+			send_to_remote(cmd);
+		}
+		else {
+			RigSerial->FlushBuffer();
+			RigSerial->WriteBuffer(cmd.c_str(), cmd.length());
+		}
+
+		replystr.clear();
+		tout = zmsec() + wait;
+
+		do {
+			MilliSleep(50);
+			buff.clear();
+
+			if (progStatus.use_tcpip) {
+				retn = read_from_remote(buff);
+			}
+			else {
+				retn = RigSerial->ReadBuffer(buff, 10, ID, ";");
+			}
+			if (retn) {
+				replystr.append(buff);
+				tout = zmsec() + wait;
+			}
+			if (replystr.rfind(ID) != std::string::npos) {
+				return true;
+			}
+			Fl::awake();
+
+		} while (zmsec() < tout);
+	}
+
+	replystr.clear();
+	return false;
+}
+
+void rigbase::sendOK(std::string cmd)
+{
+	if (progStatus.xmlrpc_rig) {
+		xml_cmd_string(cmd);
+		return;
+	}
+
+	if (IDstr.empty()) {
+		sendCommand(cmd);
+		return;
+	}
+	if (id_OK(IDstr, 100))
+		sendCommand(cmd);
+}
+
+void rigbase::set_split(bool val)
+{
+	split = val;
+}
+
+int  rigbase::get_split()
+{
+	return split;
+}
+
+std::string rigbase::read_menu(int m1, int m2) { return ""; }
+
+char bcdval[100] = {
+'\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\x08', '\x09',
+'\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', '\x17', '\x18', '\x19',
+'\x20', '\x21', '\x22', '\x23', '\x24', '\x25', '\x26', '\x27', '\x28', '\x29',
+'\x30', '\x31', '\x32', '\x33', '\x34', '\x35', '\x36', '\x37', '\x38', '\x39',
+'\x40', '\x41', '\x42', '\x43', '\x44', '\x45', '\x46', '\x47', '\x48', '\x49',
+'\x50', '\x51', '\x52', '\x53', '\x54', '\x55', '\x56', '\x57', '\x58', '\x59',
+'\x60', '\x61', '\x62', '\x63', '\x64', '\x65', '\x66', '\x67', '\x68', '\x69',
+'\x70', '\x71', '\x72', '\x73', '\x74', '\x75', '\x76', '\x77', '\x78', '\x79',
+'\x80', '\x81', '\x82', '\x83', '\x84', '\x85', '\x86', '\x87', '\x88', '\x89',
+'\x90', '\x91', '\x92', '\x93', '\x94', '\x95', '\x96', '\x97', '\x98', '\x99'
+};
+
+double PAIRS::value(double val) {
+	if (nbr == 0) return 0;
+
+// Handle cases where raw is outside the range of the table
+	if (val <= pairs[0].p1)
+		return pairs[0].p2;
+	if (val >= pairs[nbr - 1].p1)
+		return pairs[nbr - 1].p2;
+
+// Find the appropriate segment in the table
+	for (size_t i = 0; i < nbr - 2; ++i) {
+		if (val >= pairs[i].p1 && val <= pairs[i + 1].p1) {
+			if (pairs[i].p1 == pairs[i + 1].p1)
+				return pairs[i].p2;
+// Linear interpolation
+			double slope = 1.0 * (pairs[i + 1].p2 - pairs[i].p2) / (pairs[i + 1].p1 - pairs[i].p1);
+			double nuval = pairs[i].p2 + slope * (val - pairs[i].p1);
+			return nuval;
+		}
+	}
+	return 0;
+}

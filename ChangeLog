@@ -1,0 +1,28 @@
+
+Version  2.0.12
+
+    2026-07-15 dave-w1hkj : Icom corrections
+    2026-07-02 dave-w1hkj : Clean up std::cout
+    2026-06-21 dave-w1hkj : PTS device
+    2026-06-20 dave-w1hkj : IC7300 class corrections
+    2026-05-27 dave-w1hkj : UDS socket for Linux
+    2026-06-14 dave-w1hkj : TX Power etal
+    2026-06-06 dave-w1hkj : Build scripts
+    2026-06-04 dave-w1hkj : A/B Button events
+    2026-05-12 dave-w1hkj : Debug cleanup
+    2026-05-05 dave-w1hkj : PTT coding error
+    2026-05-07 dave-w1hkj : record tracing
+    2026-04-23 dave-w1hkj : Xiegu X6200
+    2026-04-28 dave-w1hkj : xmlrpc priority
+    2026-04-22 dave-w1hkj : Thread lock timeout
+    2026-04-23 dave-w1hkj : FT710
+    2026-04-18 dave-w1hkj : title
+    2026-04-27 dave-w1hkj : Yaesu FTX-1
+    2026-04-12 dave-w1hkj : Send Command bug fix
+    2026-03-29 dave-w1hkj : G90 V4
+    2026-03-10 dave-w1hkj : CW Auto Tune / Zero-in
+    2026-04-29 dave-w1hkj : FT-891 update
+    2026-04-01 dave-w1hkj : trace expansion
+    2026-03-09 dave-w1hkj : FT991A bug fix
+    2026-02-27 Dave_Baxter : TS870S attenuator control
+    2026-02-20 dave-w1hkj : TrxAVR homebrew
