@@ -103,6 +103,7 @@ RIG_K4			rig_K4;
 RIG_PCR1000		rig_PCR1000;
 RIG_RAY152		rig_RAY152;
 RIG_TMD710		rig_TMD710;
+RIG_NICFW_H3	rig_nicFW_H3;
 RIG_TRXAVR		rig_TRXAVR;
 RIG_TS140		rig_TS140;
 RIG_TS440		rig_TS440;
@@ -264,6 +265,7 @@ rigbase *rigs[] = {
 	&rig_trusdx,	// 113
 	&rig_smartsdr,  // 114
 	&rig_IC7760,	// 115
+	&rig_nicFW_H3,	// 116
 	NULL
 
 };

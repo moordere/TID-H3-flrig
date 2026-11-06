@@ -79,6 +79,7 @@
 #include "other/PCR1000.h"
 #include "other/RAY152.h"
 #include "other/TMD710.h"
+#include "other/nicFW_H3.h"
 #include "other/FLEX1500.h"
 #include "other/PowerSDR.h"
 #include "other/SmartSDR.h"
@@ -253,5 +254,6 @@ extern RIG_TCI_SUNPRO	rig_tci_sunpro;	// 112
 extern RIG_TRUSDX		rig_trusdx;		// 113
 extern RIG_SmartSDR     rig_smartsdr;   // 114
 extern RIG_IC7760		rig_IC7760;		// 115
+extern RIG_NICFW_H3		rig_nicFW_H3;	// 116
 
 #endif

@@ -153,24 +153,24 @@ am__flrig_SOURCES_DIST = xmlrpcpp/XmlRpcBase64.h \
 	rigs/other/PowerSDR.cxx rigs/other/RAY152.cxx \
 	rigs/other/SmartSDR.cxx rigs/other/sunsdr2.cxx \
 	rigs/other/tcisdr.cxx rigs/other/trusdx.cxx \
-	rigs/other/TMD710.cxx rigs/qrp_labs/QCXplus.cxx \
-	rigs/qrp_labs/QDX.cxx rigs/qrp_labs/QMX.cxx \
-	rigs/tentec/TT516.cxx rigs/tentec/DELTA-II.cxx \
-	rigs/tentec/TT538.cxx rigs/tentec/TT550.cxx \
-	rigs/tentec/TT563.cxx rigs/tentec/TT566.cxx \
-	rigs/tentec/TT588.cxx rigs/tentec/TT599.cxx \
-	rigs/xiegu/Xiegu-5105.cxx rigs/xiegu/Xiegu-G90.cxx \
-	rigs/xiegu/G90.v4.cxx rigs/xiegu/X6100.cxx \
-	rigs/xiegu/X6200.cxx rigs/yaesu/FT100D.cxx \
-	rigs/yaesu/FT450.cxx rigs/yaesu/FT450D.cxx \
-	rigs/yaesu/FT710.cxx rigs/yaesu/FT736R.cxx \
-	rigs/yaesu/FT747.cxx rigs/yaesu/FT747GX.cxx \
-	rigs/yaesu/FT757GX2.cxx rigs/yaesu/FT767.cxx \
-	rigs/yaesu/FT817.cxx rigs/yaesu/FT817BB.cxx \
-	rigs/yaesu/FT818.cxx rigs/yaesu/FT847.cxx \
-	rigs/yaesu/FT857D.cxx rigs/yaesu/FT890.cxx \
-	rigs/yaesu/FT891.cxx rigs/yaesu/FT900.cxx rigs/yaesu/FT920.cxx \
-	rigs/yaesu/FT950.cxx rigs/yaesu/FT990.cxx \
+	rigs/other/TMD710.cxx rigs/other/nicFW_H3.cxx \
+	rigs/qrp_labs/QCXplus.cxx rigs/qrp_labs/QDX.cxx \
+	rigs/qrp_labs/QMX.cxx rigs/tentec/TT516.cxx \
+	rigs/tentec/DELTA-II.cxx rigs/tentec/TT538.cxx \
+	rigs/tentec/TT550.cxx rigs/tentec/TT563.cxx \
+	rigs/tentec/TT566.cxx rigs/tentec/TT588.cxx \
+	rigs/tentec/TT599.cxx rigs/xiegu/Xiegu-5105.cxx \
+	rigs/xiegu/Xiegu-G90.cxx rigs/xiegu/G90.v4.cxx \
+	rigs/xiegu/X6100.cxx rigs/xiegu/X6200.cxx \
+	rigs/yaesu/FT100D.cxx rigs/yaesu/FT450.cxx \
+	rigs/yaesu/FT450D.cxx rigs/yaesu/FT710.cxx \
+	rigs/yaesu/FT736R.cxx rigs/yaesu/FT747.cxx \
+	rigs/yaesu/FT747GX.cxx rigs/yaesu/FT757GX2.cxx \
+	rigs/yaesu/FT767.cxx rigs/yaesu/FT817.cxx \
+	rigs/yaesu/FT817BB.cxx rigs/yaesu/FT818.cxx \
+	rigs/yaesu/FT847.cxx rigs/yaesu/FT857D.cxx \
+	rigs/yaesu/FT890.cxx rigs/yaesu/FT891.cxx rigs/yaesu/FT900.cxx \
+	rigs/yaesu/FT920.cxx rigs/yaesu/FT950.cxx rigs/yaesu/FT990.cxx \
 	rigs/yaesu/FT990a.cxx rigs/yaesu/FT991.cxx \
 	rigs/yaesu/FT991A.cxx rigs/yaesu/FT1000.cxx \
 	rigs/yaesu/FT1000MP.cxx rigs/yaesu/FT1000MP_A.cxx \
@@ -279,6 +279,7 @@ am_flrig_OBJECTS = $(am__objects_1) $(am__objects_3) \
 	rigs/other/flrig-tcisdr.$(OBJEXT) \
 	rigs/other/flrig-trusdx.$(OBJEXT) \
 	rigs/other/flrig-TMD710.$(OBJEXT) \
+	rigs/other/flrig-nicFW_H3.$(OBJEXT) \
 	rigs/qrp_labs/flrig-QCXplus.$(OBJEXT) \
 	rigs/qrp_labs/flrig-QDX.$(OBJEXT) \
 	rigs/qrp_labs/flrig-QMX.$(OBJEXT) \
@@ -471,6 +472,7 @@ am__depfiles_remade = ./$(DEPDIR)/flrig-main.Po \
 	rigs/other/$(DEPDIR)/flrig-RAY152.Po \
 	rigs/other/$(DEPDIR)/flrig-SmartSDR.Po \
 	rigs/other/$(DEPDIR)/flrig-TMD710.Po \
+	rigs/other/$(DEPDIR)/flrig-nicFW_H3.Po \
 	rigs/other/$(DEPDIR)/flrig-sunsdr2.Po \
 	rigs/other/$(DEPDIR)/flrig-tcisdr.Po \
 	rigs/other/$(DEPDIR)/flrig-trusdx.Po \
@@ -834,24 +836,24 @@ flrig_SOURCES = $(XMLRPCPP_SRC) $(am__append_1) rigs/rigbase.cxx \
 	rigs/other/PowerSDR.cxx rigs/other/RAY152.cxx \
 	rigs/other/SmartSDR.cxx rigs/other/sunsdr2.cxx \
 	rigs/other/tcisdr.cxx rigs/other/trusdx.cxx \
-	rigs/other/TMD710.cxx rigs/qrp_labs/QCXplus.cxx \
-	rigs/qrp_labs/QDX.cxx rigs/qrp_labs/QMX.cxx \
-	rigs/tentec/TT516.cxx rigs/tentec/DELTA-II.cxx \
-	rigs/tentec/TT538.cxx rigs/tentec/TT550.cxx \
-	rigs/tentec/TT563.cxx rigs/tentec/TT566.cxx \
-	rigs/tentec/TT588.cxx rigs/tentec/TT599.cxx \
-	rigs/xiegu/Xiegu-5105.cxx rigs/xiegu/Xiegu-G90.cxx \
-	rigs/xiegu/G90.v4.cxx rigs/xiegu/X6100.cxx \
-	rigs/xiegu/X6200.cxx rigs/yaesu/FT100D.cxx \
-	rigs/yaesu/FT450.cxx rigs/yaesu/FT450D.cxx \
-	rigs/yaesu/FT710.cxx rigs/yaesu/FT736R.cxx \
-	rigs/yaesu/FT747.cxx rigs/yaesu/FT747GX.cxx \
-	rigs/yaesu/FT757GX2.cxx rigs/yaesu/FT767.cxx \
-	rigs/yaesu/FT817.cxx rigs/yaesu/FT817BB.cxx \
-	rigs/yaesu/FT818.cxx rigs/yaesu/FT847.cxx \
-	rigs/yaesu/FT857D.cxx rigs/yaesu/FT890.cxx \
-	rigs/yaesu/FT891.cxx rigs/yaesu/FT900.cxx rigs/yaesu/FT920.cxx \
-	rigs/yaesu/FT950.cxx rigs/yaesu/FT990.cxx \
+	rigs/other/TMD710.cxx rigs/other/nicFW_H3.cxx \
+	rigs/qrp_labs/QCXplus.cxx rigs/qrp_labs/QDX.cxx \
+	rigs/qrp_labs/QMX.cxx rigs/tentec/TT516.cxx \
+	rigs/tentec/DELTA-II.cxx rigs/tentec/TT538.cxx \
+	rigs/tentec/TT550.cxx rigs/tentec/TT563.cxx \
+	rigs/tentec/TT566.cxx rigs/tentec/TT588.cxx \
+	rigs/tentec/TT599.cxx rigs/xiegu/Xiegu-5105.cxx \
+	rigs/xiegu/Xiegu-G90.cxx rigs/xiegu/G90.v4.cxx \
+	rigs/xiegu/X6100.cxx rigs/xiegu/X6200.cxx \
+	rigs/yaesu/FT100D.cxx rigs/yaesu/FT450.cxx \
+	rigs/yaesu/FT450D.cxx rigs/yaesu/FT710.cxx \
+	rigs/yaesu/FT736R.cxx rigs/yaesu/FT747.cxx \
+	rigs/yaesu/FT747GX.cxx rigs/yaesu/FT757GX2.cxx \
+	rigs/yaesu/FT767.cxx rigs/yaesu/FT817.cxx \
+	rigs/yaesu/FT817BB.cxx rigs/yaesu/FT818.cxx \
+	rigs/yaesu/FT847.cxx rigs/yaesu/FT857D.cxx \
+	rigs/yaesu/FT890.cxx rigs/yaesu/FT891.cxx rigs/yaesu/FT900.cxx \
+	rigs/yaesu/FT920.cxx rigs/yaesu/FT950.cxx rigs/yaesu/FT990.cxx \
 	rigs/yaesu/FT990a.cxx rigs/yaesu/FT991.cxx \
 	rigs/yaesu/FT991A.cxx rigs/yaesu/FT1000.cxx \
 	rigs/yaesu/FT1000MP.cxx rigs/yaesu/FT1000MP_A.cxx \
@@ -946,13 +948,13 @@ EXTRA_DIST = config.h flrig_icon.cxx cmedia/hid_lin.cxx \
 	include/mingw.h include/other/FLEX1500.h \
 	include/other/PCR1000.h include/other/RAY152.h \
 	include/other/PowerSDR.h include/other/SmartSDR.h \
-	include/other/TMD710.h include/pl_tones.h include/ptt.h \
-	include/qrp_labs/QCXplus.h include/qrp_labs/QDX.h \
-	include/qrp_labs/QMX.h include/rig.h include/rigs.h \
-	include/rigbase.h include/rig_io.h include/rigpanel.h \
-	include/serial.h include/socket.h include/socket_io.h \
-	include/status.h include/support.h include/threads.h \
-	include/trace.h include/lab599/TX500.h \
+	include/other/TMD710.h include/other/nicFW_H3.h \
+	include/pl_tones.h include/ptt.h include/qrp_labs/QCXplus.h \
+	include/qrp_labs/QDX.h include/qrp_labs/QMX.h include/rig.h \
+	include/rigs.h include/rigbase.h include/rig_io.h \
+	include/rigpanel.h include/serial.h include/socket.h \
+	include/socket_io.h include/status.h include/support.h \
+	include/threads.h include/trace.h include/lab599/TX500.h \
 	include/kenwood/KENWOOD.h include/kenwood/TS140.h \
 	include/kenwood/TS440.h include/kenwood/TS450S.h \
 	include/kenwood/TS480HX.h include/kenwood/TS480SAT.h \
@@ -1312,6 +1314,8 @@ rigs/other/flrig-tcisdr.$(OBJEXT): rigs/other/$(am__dirstamp) \
 rigs/other/flrig-trusdx.$(OBJEXT): rigs/other/$(am__dirstamp) \
 	rigs/other/$(DEPDIR)/$(am__dirstamp)
 rigs/other/flrig-TMD710.$(OBJEXT): rigs/other/$(am__dirstamp) \
+	rigs/other/$(DEPDIR)/$(am__dirstamp)
+rigs/other/flrig-nicFW_H3.$(OBJEXT): rigs/other/$(am__dirstamp) \
 	rigs/other/$(DEPDIR)/$(am__dirstamp)
 rigs/qrp_labs/$(am__dirstamp):
 	@$(MKDIR_P) rigs/qrp_labs
@@ -1746,6 +1750,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-RAY152.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-SmartSDR.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-TMD710.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-nicFW_H3.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-sunsdr2.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-tcisdr.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@rigs/other/$(DEPDIR)/flrig-trusdx.Po@am__quote@ # am--include-marker
@@ -2923,6 +2928,20 @@ rigs/other/flrig-TMD710.obj: rigs/other/TMD710.cxx
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='rigs/other/TMD710.cxx' object='rigs/other/flrig-TMD710.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(flrig_CPPFLAGS) $(CPPFLAGS) $(flrig_CXXFLAGS) $(CXXFLAGS) -c -o rigs/other/flrig-TMD710.obj `if test -f 'rigs/other/TMD710.cxx'; then $(CYGPATH_W) 'rigs/other/TMD710.cxx'; else $(CYGPATH_W) '$(srcdir)/rigs/other/TMD710.cxx'; fi`
+
+rigs/other/flrig-nicFW_H3.o: rigs/other/nicFW_H3.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(flrig_CPPFLAGS) $(CPPFLAGS) $(flrig_CXXFLAGS) $(CXXFLAGS) -MT rigs/other/flrig-nicFW_H3.o -MD -MP -MF rigs/other/$(DEPDIR)/flrig-nicFW_H3.Tpo -c -o rigs/other/flrig-nicFW_H3.o `test -f 'rigs/other/nicFW_H3.cxx' || echo '$(srcdir)/'`rigs/other/nicFW_H3.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) rigs/other/$(DEPDIR)/flrig-nicFW_H3.Tpo rigs/other/$(DEPDIR)/flrig-nicFW_H3.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='rigs/other/nicFW_H3.cxx' object='rigs/other/flrig-nicFW_H3.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(flrig_CPPFLAGS) $(CPPFLAGS) $(flrig_CXXFLAGS) $(CXXFLAGS) -c -o rigs/other/flrig-nicFW_H3.o `test -f 'rigs/other/nicFW_H3.cxx' || echo '$(srcdir)/'`rigs/other/nicFW_H3.cxx
+
+rigs/other/flrig-nicFW_H3.obj: rigs/other/nicFW_H3.cxx
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(flrig_CPPFLAGS) $(CPPFLAGS) $(flrig_CXXFLAGS) $(CXXFLAGS) -MT rigs/other/flrig-nicFW_H3.obj -MD -MP -MF rigs/other/$(DEPDIR)/flrig-nicFW_H3.Tpo -c -o rigs/other/flrig-nicFW_H3.obj `if test -f 'rigs/other/nicFW_H3.cxx'; then $(CYGPATH_W) 'rigs/other/nicFW_H3.cxx'; else $(CYGPATH_W) '$(srcdir)/rigs/other/nicFW_H3.cxx'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) rigs/other/$(DEPDIR)/flrig-nicFW_H3.Tpo rigs/other/$(DEPDIR)/flrig-nicFW_H3.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='rigs/other/nicFW_H3.cxx' object='rigs/other/flrig-nicFW_H3.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(flrig_CPPFLAGS) $(CPPFLAGS) $(flrig_CXXFLAGS) $(CXXFLAGS) -c -o rigs/other/flrig-nicFW_H3.obj `if test -f 'rigs/other/nicFW_H3.cxx'; then $(CYGPATH_W) 'rigs/other/nicFW_H3.cxx'; else $(CYGPATH_W) '$(srcdir)/rigs/other/nicFW_H3.cxx'; fi`
 
 rigs/qrp_labs/flrig-QCXplus.o: rigs/qrp_labs/QCXplus.cxx
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(flrig_CPPFLAGS) $(CPPFLAGS) $(flrig_CXXFLAGS) $(CXXFLAGS) -MT rigs/qrp_labs/flrig-QCXplus.o -MD -MP -MF rigs/qrp_labs/$(DEPDIR)/flrig-QCXplus.Tpo -c -o rigs/qrp_labs/flrig-QCXplus.o `test -f 'rigs/qrp_labs/QCXplus.cxx' || echo '$(srcdir)/'`rigs/qrp_labs/QCXplus.cxx
@@ -4785,6 +4804,7 @@ distclean: distclean-am
 	-rm -f rigs/other/$(DEPDIR)/flrig-RAY152.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-SmartSDR.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-TMD710.Po
+	-rm -f rigs/other/$(DEPDIR)/flrig-nicFW_H3.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-sunsdr2.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-tcisdr.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-trusdx.Po
@@ -5017,6 +5037,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f rigs/other/$(DEPDIR)/flrig-RAY152.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-SmartSDR.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-TMD710.Po
+	-rm -f rigs/other/$(DEPDIR)/flrig-nicFW_H3.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-sunsdr2.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-tcisdr.Po
 	-rm -f rigs/other/$(DEPDIR)/flrig-trusdx.Po

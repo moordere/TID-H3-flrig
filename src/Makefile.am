@@ -175,6 +175,7 @@ flrig_SOURCES += \
 	rigs/other/tcisdr.cxx \
 	rigs/other/trusdx.cxx \
 	rigs/other/TMD710.cxx \
+	rigs/other/nicFW_H3.cxx \
 	rigs/qrp_labs/QCXplus.cxx \
 	rigs/qrp_labs/QDX.cxx \
 	rigs/qrp_labs/QMX.cxx \
@@ -396,6 +397,7 @@ EXTRA_DIST = \
 	include/other/PowerSDR.h \
 	include/other/SmartSDR.h \
 	include/other/TMD710.h \
+	include/other/nicFW_H3.h \
 	include/pl_tones.h \
 	include/ptt.h \
 	include/qrp_labs/QCXplus.h \
